@@ -16,4 +16,4 @@ The one exception, in the current implementation, are mods that include other pl
 
 ## Known Issues
 - A heavily modded game can take up to several minutes to launch for the first time. After that, it will take a few more seconds than normal.
-- The plugin can't currently handle loading other plugins. Files inside of the `www/js` folder of a mod will be ignored.
+- The plugin can't currently handle loading other plugins. Files inside the `www/js` folder of a mod will be ignored.
