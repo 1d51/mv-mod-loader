@@ -15,5 +15,7 @@ The plugin can handle working on top of an already modified game, but a clean in
 The one exception, in the current implementation, are mods that include other plugins. Those need to have the contents of their `www/js` folder installed separately.
 
 ## Known Issues
-- A heavily modded game can take up to several minutes to launch for the first time. After that, it will only take a few more seconds than normal to launch.
+- A heavily modded game can take a few minutes to launch the first time.
+- After that, it will only take a few more seconds than normal to launch.
 - The plugin can't currently handle loading other plugins. Files inside the `www/js` folder of a mod will be ignored.
+- This is a WIP and bugs are to be expected.
