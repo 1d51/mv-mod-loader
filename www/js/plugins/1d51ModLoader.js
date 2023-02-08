@@ -235,6 +235,7 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
                     }
                 }
             }
+			result.filter(x => x)
         } else {
             Object.keys(source).forEach(function(key) {
                 if (original && key in original) {
@@ -245,8 +246,6 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
             });
         }
 
-        if (Array.isArray(result))
-            return result.filter(x => x)
         return result;
     }
 
