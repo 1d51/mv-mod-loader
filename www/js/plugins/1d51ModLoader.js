@@ -4,7 +4,8 @@
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
-const REDUCE_MOD_DATA = true; // Set to false if all mods are already reduced, to increase performance.
+const DISABLE_LOADER = false; // Once the game runs once, mods will be installed, and the plugin can be disabled.
+const REDUCE_MOD_DATA = true; // Set to false if all mods are already reduced, to slightly increase performance.
 const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably shouldn't do that.
 
 (function($) {
@@ -248,7 +249,8 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
 
         return result;
     }
-
+    
+    if (DISABLE_LOADER) return;
     readMods();
 
 })();
