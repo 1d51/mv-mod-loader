@@ -4,7 +4,7 @@
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
-const DISABLE_LOADER = false; // Once the game runs once, mods will be installed, and the plugin can be disabled.
+const CHECK_VERSIONS = true; // If all mod folders have the expected name format, use version information to disable the plugin.
 const REDUCE_MOD_DATA = true; // Set to false if all mods are already reduced, to slightly increase performance.
 const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably shouldn't do that.
 
@@ -36,29 +36,41 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
         return a;
     };
 
-    const createPath = function (relativePath) {
-        oldVersion && (relativePath = "/" + relativePath);
-        relativePath += (relativePath === "") ? "./" : "/";
-        !(Utils.isNwjs() && Utils.isOptionValid("test")) && (relativePath = "www/" + relativePath);
-        let path = window.location.pathname.replace(/(\/www|)\/[^\/]*$/, relativePath);
+    const createPath = function(wrath) {
+        oldVersion && (wrath = "/" + wrath);
+        wrath += (wrath === "") ? "./" : "/";
+        !(Utils.isNwjs() && Utils.isOptionValid("test")) && (wrath = "www/" + wrath);
+        let path = window.location.pathname.replace(/(\/www|)\/[^\/]*$/, wrath);
         if (path.match(/^\/([A-Z]\:)/)) path = path.slice(1);
         path = decodeURIComponent(path);
         return path;
     };
 
-    const getFilesRecursively = function(directory) {
+    const getFilesRecursively = function(path) {
         const files = [];
-        const filesInDirectory = fs.readdirSync(directory);
-        for (const file of filesInDirectory) {
-            const absolute = directory + "/" + file;
+        const filesInPath = fs.readdirSync(path);
+        for (const file of filesInPath) {
+            const absolute = path + "/" + file;
             if (fs.statSync(absolute).isDirectory()) {
                 files.push(...getFilesRecursively(absolute));
             } else files.push(absolute);
         }
         return files;
     };
+	
+	const getFolders = function(path) {
+		const folders = [];
+        const foldersInPath = fs.readdirSync(path);
+        for (const folder of foldersInPath) {
+            const absolute = path + "/" + folder;
+            if (fs.statSync(absolute).isDirectory()) {
+                folders.push(folder);
+            }
+        }
+        return folders;
+	};
 
-    const deepWriteSync = function (path, file) {
+    const deepWriteSync = function(path, file) {
         ensureDirectoryExistence(path);
         fs.writeFileSync(path, file);
     }
@@ -73,7 +85,7 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
         fs.mkdirSync(directory);
     }
 
-    const appendix = function (path) {
+    const appendix = function(path) {
         const index = path.indexOf('/www');
         return path.substr(index + 5);
     }
@@ -89,12 +101,13 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
 
     const readMods = function () {
         const overridePaths = {};
-        const mods = fs.readdirSync(modsPath)
-            .filter(m => m !== ".keep").sort();
+        const mods = getFolders(modsPath).sort();
+		if (CHECK_VERSIONS && checkVersions(mods)) return;
+		
         for (let i = 0; i < mods.length; i++) {
             const modPath = modsPath + mods[i] + "/www";
-            const datas = fs.readdirSync(modPath).filter(d => d.includes("data")).sort();
-            const others = fs.readdirSync(modPath).filter(d => !d.includes("data") && d !== "js").sort();
+            const datas = getFolders(modPath).filter(d => d.includes("data")).sort();
+            const others = getFolders(modPath).filter(d => !d.includes("data") && d !== "js").sort();
 
             for (let j = 0; j < datas.length; j++) {
                 const dataPath = modPath + "/" + datas[j]
@@ -149,7 +162,7 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
         });
     };
 
-    const backup = function (path) {
+    const backup = function(path) {
         const keyPath = appendix(path);
         const backupPath = backupsPath + keyPath;
         const originPath = root + keyPath;
@@ -165,7 +178,7 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
         }
     }
 
-    const mergeData = function (original, source, target) {
+    const mergeData = function(original, source, target) {
         const result = JSON.parse(JSON.stringify(target));
         if (Array.isArray(source) && Array.isArray(target)) {
             for (let i = 0; i < source.length; i++) {
@@ -223,7 +236,7 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
         return result;
     }
 
-    const reduceData = function (original, source) {
+    const reduceData = function(original, source) {
         const result = JSON.parse(JSON.stringify(source));
         if (Array.isArray(original) && Array.isArray(source)) {
             for (let i = 0; i < source.length; i++) {
@@ -249,8 +262,26 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
 
         return result;
     }
+	
+	const checkVersions = function(mods) {
+		const versionsPath = root + "versions.json";
+		if (!fs.existsSync(versionsPath)) {
+			writeVersions(mods);
+			return false;
+		}
+		const versionsFile = fs.readFileSync(versionsPath);
+		const versions = JSON.parse(versionsFile);
+		writeVersions(mods);
+		
+		const valid = mods.every((m) => m.match(/\[.*\]$/));
+		return valid && strEq(versions, mods);
+	};
+	
+	const writeVersions = function(mods) {
+		const path = root + "versions.json";
+		deepWriteSync(path, JSON.stringify(mods));
+	}
     
-    if (DISABLE_LOADER) return;
     readMods();
 
 })();
