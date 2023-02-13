@@ -1,10 +1,9 @@
 /*:
  * @author 1d51
- * @version 0.2
+ * @version 0.3
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
-const CHECK_VERSIONS = true; // If all mod folders have the expected name format, use version information to disable the plugin.
 const REDUCE_MOD_DATA = true; // Set to false if all mods are already reduced, to slightly increase performance.
 const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably shouldn't do that.
 
@@ -35,6 +34,13 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
         }
         return a;
     };
+	
+	const move = function(array, index, delta) {
+		const newIndex = index + delta;
+		if (newIndex < 0 || newIndex == array.length) return;
+		const indexes = [index, newIndex].sort((a, b) => a - b);
+		array.splice(indexes[0], 2, array[indexes[1]], array[indexes[0]]);
+	}
 
     const createPath = function(wrath) {
         oldVersion && (wrath = "/" + wrath);
@@ -89,11 +95,13 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
         const index = path.indexOf('/www');
         return path.substr(index + 5);
     }
+	
+	/************************************************************************************/
 
     const root = createPath("");
-    const modsPath = createPath("mods");
-    const backupsPath = createPath("backups");
-    const diffsPath = createPath("diffs");
+    const modsPath = root + "mods/";
+    const backupsPath = root + "backups/";
+    const diffsPath = root + "diffs/";
 
     const keyCombine = ["equips", "note", "traits", "learnings", "effects"];
     const keyMerge = ["events"];
@@ -101,9 +109,20 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
 
     const readMods = function () {
         const overridePaths = {};
-        const mods = getFolders(modsPath).sort();
-		if (CHECK_VERSIONS && checkVersions(mods)) return;
+        let mods = sortMods(getFolders(modsPath));
+		mods = mods.filter(m => getEnabled(m));
 		
+		if (mods.length === 0) {
+			const results = getFilesRecursively(backupsPath);
+			for (let i = 0; i < results.length; i++) {
+				const index = results[i].indexOf('/backups');
+				const keyPath = results[i].substr(index + 10);
+				const originPath = root + keyPath;
+				const backupFile = fs.readFileSync(results[i]);
+                deepWriteSync(originPath, backupFile);
+			} return;
+		}
+				
         for (let i = 0; i < mods.length; i++) {
             const modPath = modsPath + mods[i] + "/www";
             const datas = getFolders(modPath).filter(d => d.includes("data")).sort();
@@ -263,25 +282,205 @@ const FORCE_BACKUP = false; // Set to true to rebuild file backups. You probably
         return result;
     }
 	
-	const checkVersions = function(mods) {
-		const versionsPath = root + "versions.json";
-		if (!fs.existsSync(versionsPath)) {
-			writeVersions(mods);
-			return false;
+	const sortMods = function(mods) {
+		const orderPath = root + "order.json";		
+		if (fs.existsSync(orderPath)) {
+			const orderFile = fs.readFileSync(orderPath);
+			let order = JSON.parse(orderFile);
+			order = order.filter(m => mods.includes(m));
+			for (let i = 0; i < mods.length; i++) {
+				if (!order.includes(mods[i])) {
+					order.push(mods[i]);
+				}
+			}
+			
+			return order;
 		}
-		const versionsFile = fs.readFileSync(versionsPath);
-		const versions = JSON.parse(versionsFile);
-		writeVersions(mods);
 		
-		const valid = mods.every((m) => m.match(/\[.*\]$/));
-		return valid && strEq(versions, mods);
+		return mods;
+	}
+	
+	const getEnabled = function(symbol) {
+		const enabledPath = root + "enabled.json";
+		if (!fs.existsSync(enabledPath)) return false;
+		const enabledFile = fs.readFileSync(enabledPath);
+		return JSON.parse(enabledFile)[symbol];
+	}
+	
+	const setEnabled = function(symbol, value) {
+		const enabledPath = root + "enabled.json";
+		let enabled = {};
+		
+		if (fs.existsSync(enabledPath)) {
+			const enabledFile = fs.readFileSync(enabledPath);
+			enabled = JSON.parse(enabledFile);
+		}
+
+		enabled[symbol] = value;
+		deepWriteSync(enabledPath, JSON.stringify(enabled));
+	}
+	
+	readMods();
+		
+	/************************************************************************************/
+	
+	let reboot = false;
+	
+	const makeCommandList = Window_TitleCommand.prototype.makeCommandList;
+	Window_TitleCommand.prototype.makeCommandList = function() {
+		makeCommandList.call(this);
+		this.addCommand("Mods", 'mods');
 	};
 	
-	const writeVersions = function(mods) {
-		const path = root + "versions.json";
-		deepWriteSync(path, JSON.stringify(mods));
+	const createCommandWindow = Scene_Title.prototype.createCommandWindow;
+	Scene_Title.prototype.createCommandWindow = function() {
+		createCommandWindow.call(this);
+		this._commandWindow.setHandler('mods', this.mods.bind(this));
+	};
+
+	Scene_Title.prototype.mods = function() {
+		SceneManager.push(Scene_Mods);
+	};
+	
+	/************************************************************************************/
+	
+	function Scene_Mods() {
+		this.initialize.apply(this, arguments);
 	}
-    
-    readMods();
+
+	Scene_Mods.prototype = Object.create(Scene_MenuBase.prototype);
+	Scene_Mods.prototype.constructor = Scene_Mods;
+
+	Scene_Mods.prototype.initialize = function() {
+		Scene_MenuBase.prototype.initialize.call(this);
+	};
+
+	Scene_Mods.prototype.create = function() {
+		Scene_MenuBase.prototype.create.call(this);
+		this.createModsWindow();
+	};
+
+	Scene_Mods.prototype.terminate = function() {
+		Scene_MenuBase.prototype.terminate.call(this);
+	};
+
+	Scene_Mods.prototype.createModsWindow = function() {
+		this._modsWindow = new Window_Mods();
+		this._modsWindow.setHandler('cancel', this.popScene.bind(this));
+		this.addWindow(this._modsWindow);
+	};
+	
+	Scene_Mods.prototype.popScene = function() {
+		if (reboot) SceneManager.exit()
+		Scene_MenuBase.prototype.popScene.call(this);
+	}
+
+	/************************************************************************************/
+	
+	function Window_Mods() {
+		this.initialize.apply(this, arguments);
+	}
+
+	Window_Mods.prototype = Object.create(Window_Command.prototype);
+	Window_Mods.prototype.constructor = Window_Mods;
+
+	Window_Mods.prototype.initialize = function() {
+		Window_Command.prototype.initialize.call(this, 0, 0);
+		this.updatePlacement();
+	};
+
+	Window_Mods.prototype.windowWidth = function() {
+		return 400;
+	};
+
+	Window_Mods.prototype.windowHeight = function() {
+		return this.fittingHeight(Math.min(this.numVisibleRows(), 12));
+	};
+
+	Window_Mods.prototype.updatePlacement = function() {
+		this.x = (Graphics.boxWidth - this.width) / 2;
+		this.y = (Graphics.boxHeight - this.height) / 2;
+	};
+
+	Window_Mods.prototype.makeCommandList = function() {
+		const mods = sortMods(getFolders(modsPath));
+		for (let i = 0; i < mods.length; i++ ) {
+			this.addCommand("↕ " + mods[i], mods[i]);
+		}
+	};
+
+	Window_Mods.prototype.drawItem = function(index) {
+		var rect = this.itemRectForText(index);
+		var statusWidth = this.statusWidth();
+		var titleWidth = rect.width - statusWidth;
+		this.resetTextColor();
+		this.changePaintOpacity(this.isCommandEnabled(index));
+		this.drawText(this.commandName(index), rect.x, rect.y, titleWidth, 'left');
+		this.drawText(this.statusText(index), titleWidth, rect.y, statusWidth, 'right');
+	};
+
+	Window_Mods.prototype.statusWidth = function() {
+		return 120;
+	};
+
+	Window_Mods.prototype.statusText = function(index) {
+		var symbol = this.commandSymbol(index);
+		var value = getEnabled(symbol);
+		return this.booleanStatusText(value);
+	};
+
+	Window_Mods.prototype.booleanStatusText = function(value) {
+		return value ? 'ON' : 'OFF';
+	};
+
+	Window_Mods.prototype.processOk = function() {
+		var index = this.index();
+		var symbol = this.commandSymbol(index);
+		var value = getEnabled(symbol);
+		this.changeValue(symbol, !value);
+	};
+
+	Window_Mods.prototype.cursorRight = function(wrap) {
+		var index = this.index();
+		var symbol = this.commandSymbol(index);
+		this.changeValue(symbol, true);
+	};
+
+	Window_Mods.prototype.cursorLeft = function(wrap) {
+		var index = this.index();
+		var symbol = this.commandSymbol(index);
+		this.changeValue(symbol, false);
+	};
+	
+	Window_Mods.prototype.cursorPageup = function() {
+		var index = this.index();
+		const mods = sortMods(getFolders(modsPath));
+		move(mods, index, -1);
+
+		const orderPath = root + "order.json";
+		deepWriteSync(orderPath, JSON.stringify(mods));
+		this.refresh();
+		reboot = true;
+	};
+	
+	Window_Mods.prototype.cursorPagedown = function() {
+		var index = this.index();
+		const mods = sortMods(getFolders(modsPath));
+		move(mods, index, 1);
+
+		const orderPath = root + "order.json";
+		deepWriteSync(orderPath, JSON.stringify(mods));
+		this.refresh();
+		reboot = true;
+	};
+
+	Window_Mods.prototype.changeValue = function(symbol, value) {
+		var lastValue = getEnabled(symbol);
+		if (lastValue !== value) {
+			setEnabled(symbol, value);
+			this.redrawItem(this.findSymbol(symbol));
+			SoundManager.playCursor();
+		} reboot = true;
+	};
 
 })();
