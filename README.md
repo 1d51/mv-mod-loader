@@ -7,15 +7,12 @@ To make game bootup faster, it compresses mods so that they only contain relevan
 For the game developer, adding this plugin to their game is done as they would with any other plugin. The included libraries are required.
 
 For a modder to add support to a game that does not come with this plugin pre-installed, they will have to distribute some extra, game-dependant files, such as `plugins.js`. It's also recommended that they package their mods along with the generated `diffs` folder, to reduce first-launch loading times.
-To help the plugin work more efficiently, mod authors are encouraged to package their mods in a folder with a name that ends with the mod's version, such as `example [0.1]` (the brackets are essential).
 
 A user can install mods by adding them inside the `www/mods` folder, independently of whether those mods were designed with this plugin in mind or not.
 For example, if a modder distributes a mod in the form of a folder like `example/www/...`, installing said mod so that it's loaded through the plugin is as simple as drag and dropping the whole thing, so that it looks like `www/mods/example`.
 
 The plugin can handle working on top of an already modified game, but a clean install is always recommended. Once the plugin is installed, there should generally be no need to install mods the usual way, instead of how it's explained here.
-The one exception, in the current implementation, are mods that include other plugins. Those need to have the contents of their `www/js` folder installed separately.
 
 ## Known Issues
-- The plugin can't currently handle loading other plugins. Files inside the `www/js` folder of a mod will be ignored.
 - The plugin doesn't know how to solve ID conflicts. Mod authors have to agree on the ID their mods use.
 - This is a WIP and bugs are to be expected.
