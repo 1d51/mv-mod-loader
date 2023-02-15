@@ -15,8 +15,8 @@ ModLoader.Config = ModLoader.Config || {};
 ModLoader.Holder = ModLoader.Holder || {};
 
 (function($) {
-	$.Config.reduceModData = true; // Set to false if all mods are already reduced, to slightly increase performance.
-	$.Config.forceBackup = false; // Set to true to rebuild file backups. You probably shouldn't do that.
+	$.Config.reduceModData = true;
+	$.Config.forceBackup = false;
 	
 	$.Config.keyCombine = ["equips", "note", "traits", "learnings", "effects"];
     $.Config.keyMerge = ["events"];
@@ -121,6 +121,40 @@ ModLoader.Holder = ModLoader.Holder || {};
         return path.substr(index + 5);
     }
 	
+	$.Helpers.objfv = function(file) {
+        let str = file.toString().match(/=\n*(\[[\s\S]*)/)[1];
+		str = str.replace(/;\n*$/, "");
+		return JSON.parse(str);
+    }
+	
+	$.Helpers.arrdiff = function(source, original, target, append = null) {
+		const sh = $.Helpers.hashCode(JSON.stringify(source))
+		const oh = $.Helpers.hashCode(JSON.stringify(original))
+		const th = $.Helpers.hashCode(JSON.stringify(target))
+		const xx = sh.toString() + oh.toString() + th.toString();
+		const path = $.Params.diffsPath + xx + ".json"
+		if (fs.existsSync(path)) {
+			const os = original.map((obj) => JSON.stringify(obj));
+			const diffFile = fs.readFileSync(path);
+
+			const diff = JSON.parse(diffFile);
+			const rs = xdiff.patch(os, diff);
+			return rs.map((str) => JSON.parse(str));
+		} else {
+			const ss = source.map((obj) => JSON.stringify(obj));
+			const os = original.map((obj) => JSON.stringify(obj));
+			const ts = target.map((obj) => JSON.stringify(obj));
+
+			const diff = xdiff.diff3(ss, os, ts);
+			const rs = xdiff.patch(os, diff);
+			
+			if (append && rs.indexOf(append) === -1) rs.push(append)
+			
+			$.Helpers.deepWriteSync(path, JSON.stringify(diff));
+			return rs.map((str) => JSON.parse(str));
+		}
+	}
+	
 	/************************************************************************************/
 
     $.Params.root = $.Helpers.createPath("");
@@ -154,6 +188,38 @@ ModLoader.Holder = ModLoader.Holder || {};
 				.filter(d => d.includes("data")).sort();
             const others = $.Helpers.getFolders(modPath)
 				.filter(d => !d.includes("data")).sort();
+				
+			for (let j = 0; j < others.length; j++) {
+				const otherPath = modPath + "/" + others[j]
+                const results = $.Helpers.getFilesRecursively(otherPath);
+                for (let k = 0; k < results.length; k++) {
+					if (results[k].match(/plugins[^\/]*\.js/)) {
+						const keyPath = $.Helpers.appendix(results[k]);
+						$.backup(results[k]);
+						
+						const sourceFile = fs.readFileSync(results[k]);
+						const sourceData = $.Helpers.objfv(sourceFile);
+						
+						const originalPath = $.Params.backupsPath + keyPath;						
+						const originalFile = fs.readFileSync(originalPath);
+						const originalData = $.Helpers.objfv(originalFile);
+						
+						const targetPath = $.Params.root + keyPath;
+						const targetFile = fs.readFileSync(targetPath);
+						const targetData = $.Helpers.objfv(targetFile);
+						
+						const loader = {"name":"1d51ModLoader","status":true,"description":"A simple mod loader for RPG Maker MV.","parameters":{}};
+						const result = $.Helpers.arrdiff(sourceData, originalData, targetData, JSON.stringify(loader));
+						$.Helpers.deepWriteSync(targetPath, "var $plugins =\n" + JSON.stringify(result));
+					} else {
+						const keyPath = $.Helpers.appendix(results[k]);
+						const otherFile = fs.readFileSync(results[k]);
+						$.Helpers.deepWriteSync($.Params.root + keyPath, otherFile);
+					}
+                }
+            }
+			
+			return;
 
             for (let j = 0; j < datas.length; j++) {
                 const dataPath = modPath + "/" + datas[j]
@@ -173,11 +239,18 @@ ModLoader.Holder = ModLoader.Holder || {};
                 const results = $.Helpers.getFilesRecursively(otherPath);
                 for (let k = 0; k < results.length; k++) {
 					if (results[k].match(/plugins[^\/]*\.js/)) {
+						const keyPath = $.Helpers.appendix(results[k]);
+						const originPath = $.Params.root + key;
+						const originFile = fs.readFileSync(originPath);
+						const originString = originFile.match(/\[.*?\];/);
+						const originData = JSON.parse(originFile);
+						const otherFile = fs.readFileSync(results[k]);
+						const otherData = JSON.parse(otherFile);
 						// TODO: Merge plugins
 					} else {
 						const keyPath = $.Helpers.appendix(results[k]);
-						const file = fs.readFileSync(results[k]);
-						$.Helpers.deepWriteSync($.Params.root + keyPath, file);
+						const otherFile = fs.readFileSync(results[k]);
+						$.Helpers.deepWriteSync($.Params.root + keyPath, otherFile);
 					}
                 }
             }
@@ -251,29 +324,7 @@ ModLoader.Holder = ModLoader.Holder || {};
                         result[key] = $.mergeData(original[key], source[key], target[key]);
                     } else if ($.Config.keyXDiff.includes(key)) {
                         if (Array.isArray(source[key])) {
-                            const sh = $.Helpers.hashCode(JSON.stringify(source[key]))
-                            const oh = $.Helpers.hashCode(JSON.stringify(original[key]))
-                            const th = $.Helpers.hashCode(JSON.stringify(target[key]))
-                            const xx = sh.toString() + oh.toString() + th.toString();
-                            const path = $.Params.diffsPath + xx + ".json"
-                            if (fs.existsSync(path)) {
-                                const os = original[key].map((obj) => JSON.stringify(obj));
-                                const diffFile = fs.readFileSync(path);
-
-                                const diff = JSON.parse(diffFile);
-                                const rs = xdiff.patch(os, diff);
-                                result[key] = rs.map((str) => JSON.parse(str));
-                            } else {
-                                const ss = source[key].map((obj) => JSON.stringify(obj));
-                                const os = original[key].map((obj) => JSON.stringify(obj));
-                                const ts = target[key].map((obj) => JSON.stringify(obj));
-
-                                const diff = xdiff.diff3(ss, os, ts);
-                                const rs = xdiff.patch(os, diff);
-                                result[key] = rs.map((str) => JSON.parse(str));
-
-                                $.Helpers.deepWriteSync(path, JSON.stringify(diff));
-                            }
+							result[key] = $.Helpers.arrdiff(source[key], original[key], target[key]);
                         } else {
                             const diff = xdiff.diff3(source[key], original[key], target[key]);
                             result[key] = xdiff.patch(original[key], diff);
