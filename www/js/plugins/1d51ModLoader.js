@@ -18,6 +18,7 @@ ModLoader.Holder = ModLoader.Holder || {};
 	$.Config.reduceModData = true;
 	$.Config.forceBackup = false;
 	
+	$.Config.pluginConfig = {"name":"1d51ModLoader","status":true,"description":"A simple mod loader for RPG Maker MV.","parameters":{}};
 	$.Config.keyCombine = ["equips", "note", "traits", "learnings", "effects"];
     $.Config.keyMerge = ["events"];
     $.Config.keyXDiff = ["list"];
@@ -121,7 +122,8 @@ ModLoader.Holder = ModLoader.Holder || {};
         return path.substr(index + 5);
     }
 	
-	$.Helpers.objfv = function(file) {
+	$.Helpers.parse = function(file, variable = false) {
+		if (!variable) return JSON.parse(file);
         let str = file.toString().match(/=\n*(\[[\s\S]*)/)[1];
 		str = str.replace(/;\n*$/, "");
 		return JSON.parse(str);
@@ -132,27 +134,25 @@ ModLoader.Holder = ModLoader.Holder || {};
 		const oh = $.Helpers.hashCode(JSON.stringify(original))
 		const th = $.Helpers.hashCode(JSON.stringify(target))
 		const xx = sh.toString() + oh.toString() + th.toString();
+		const os = original.map((obj) => JSON.stringify(obj));
 		const path = $.Params.diffsPath + xx + ".json"
+		let diff = null;
+		
 		if (fs.existsSync(path)) {
-			const os = original.map((obj) => JSON.stringify(obj));
 			const diffFile = fs.readFileSync(path);
-
-			const diff = JSON.parse(diffFile);
-			const rs = xdiff.patch(os, diff);
-			return rs.map((str) => JSON.parse(str));
+			diff = JSON.parse(diffFile);
 		} else {
 			const ss = source.map((obj) => JSON.stringify(obj));
-			const os = original.map((obj) => JSON.stringify(obj));
 			const ts = target.map((obj) => JSON.stringify(obj));
+			diff = xdiff.diff3(ss, os, ts);
 
-			const diff = xdiff.diff3(ss, os, ts);
-			const rs = xdiff.patch(os, diff);
-			
-			if (append && rs.indexOf(append) === -1) rs.push(append)
-			
 			$.Helpers.deepWriteSync(path, JSON.stringify(diff));
-			return rs.map((str) => JSON.parse(str));
 		}
+		
+		const rs = xdiff.patch(os, diff);
+		if (append && rs.indexOf(JSON.stringify(append)) === -1) rs.push(append);
+		return rs.map((str) => JSON.parse(str));
+		
 	}
 	
 	/************************************************************************************/
@@ -165,124 +165,79 @@ ModLoader.Holder = ModLoader.Holder || {};
 	$.Params.reboot = false;
 
     $.readMods = function () {
-        const overridePaths = {};
+		$.Helpers.ensureDirectoryExistence($.Params.modsPath);
+		$.Helpers.ensureDirectoryExistence($.Params.backupsPath);
+		$.Helpers.ensureDirectoryExistence($.Params.diffsPath);
+		
 		const modFolders = $.Helpers.getFolders($.Params.modsPath);
-
-        let mods = $.sortMods(modFolders);
-		mods = mods.filter(m => $.getEnabled(m));
+        const mods = $.sortMods(modFolders).filter(m => $.getEnabled(m));
 		
 		if (mods.length === 0) {
-			const results = $.Helpers.getFilesRecursively($.Params.backupsPath);
-			for (let i = 0; i < results.length; i++) {
-				const index = results[i].indexOf('/backups');
-				const keyPath = results[i].substr(index + 10);
+			const files = $.Helpers.getFilesRecursively($.Params.backupsPath);
+			for (let i = 0; i < files.length; i++) {
+				const index = files[i].indexOf('/backups');
+				const keyPath = files[i].substr(index + 10);
 				const originPath = $.Params.root + keyPath;
-				const backupFile = fs.readFileSync(results[i]);
+				const backupFile = fs.readFileSync(files[i]);
                 $.Helpers.deepWriteSync(originPath, backupFile);
 			} return;
 		}
-				
+		
+		const overridePaths = {};
         for (let i = 0; i < mods.length; i++) {
             const modPath = $.Params.modsPath + mods[i] + "/www";
-            const datas = $.Helpers.getFolders(modPath)
-				.filter(d => d.includes("data")).sort();
-            const others = $.Helpers.getFolders(modPath)
-				.filter(d => !d.includes("data")).sort();
-				
-			for (let j = 0; j < others.length; j++) {
-				const otherPath = modPath + "/" + others[j]
-                const results = $.Helpers.getFilesRecursively(otherPath);
-                for (let k = 0; k < results.length; k++) {
-					if (results[k].match(/plugins[^\/]*\.js/)) {
-						const keyPath = $.Helpers.appendix(results[k]);
-						$.backup(results[k]);
-						
-						const sourceFile = fs.readFileSync(results[k]);
-						const sourceData = $.Helpers.objfv(sourceFile);
-						
-						const originalPath = $.Params.backupsPath + keyPath;						
-						const originalFile = fs.readFileSync(originalPath);
-						const originalData = $.Helpers.objfv(originalFile);
-						
-						const targetPath = $.Params.root + keyPath;
-						const targetFile = fs.readFileSync(targetPath);
-						const targetData = $.Helpers.objfv(targetFile);
-						
-						const loader = {"name":"1d51ModLoader","status":true,"description":"A simple mod loader for RPG Maker MV.","parameters":{}};
-						const result = $.Helpers.arrdiff(sourceData, originalData, targetData, JSON.stringify(loader));
-						$.Helpers.deepWriteSync(targetPath, "var $plugins =\n" + JSON.stringify(result));
-					} else {
-						const keyPath = $.Helpers.appendix(results[k]);
-						const otherFile = fs.readFileSync(results[k]);
-						$.Helpers.deepWriteSync($.Params.root + keyPath, otherFile);
-					}
-                }
-            }
+			const files = $.Helpers.getFilesRecursively(modPath);
+			for (let j = 0; j < files.length; j++) {
+				const keyPath = $.Helpers.appendix(files[j]);
+				if (!keyPath.match(/(\.json)|(plugins[^\/]*\.js)/)) {
+					const originPath = $.Params.root + keyPath;
+					const sourceFile = fs.readFileSync(files[j]);
+					$.Helpers.deepWriteSync(originPath, sourceFile);
+					continue;
+				}
+				$.backup(files[j]);
+				if (!overridePaths[keyPath])
+					overridePaths[keyPath] = [];
+				overridePaths[keyPath].push(files[j]);
+			}
+		}
+		
+		Object.keys(overridePaths).forEach(function(key) {
+			const isPlugin = key.match(/plugins[^\/]*\.js/);
+			const backupPath = $.Params.backupsPath + key;
+			const backupFile = fs.readFileSync(backupPath);
+			const backupData = $.Helpers.parse(backupFile, isPlugin);
 			
-			return;
+			let targetData = $.Helpers.parse(backupFile, isPlugin);
+			for (let i = 0; i < overridePaths[key].length; i++) {
+				const sourceFile = fs.readFileSync(overridePaths[key][i]);
+				const sourceData = $.Helpers.parse(sourceFile, isPlugin);
+				
+				if (key.split("/")[0].includes("data")) {
+					if ($.Config.reduceModData) {
+						const reducedData = $.reduceData(sourceData, backupData)
+						targetData = $.mergeData(reducedData, backupData, targetData);
 
-            for (let j = 0; j < datas.length; j++) {
-                const dataPath = modPath + "/" + datas[j]
-                const results = $.Helpers.getFilesRecursively(dataPath);
-                for (let k = 0; k < results.length; k++) {
-                    const keyPath = $.Helpers.appendix(results[k]);
-                    $.backup(results[k]);
-
-                    if (!overridePaths[keyPath])
-                        overridePaths[keyPath] = [];
-                    overridePaths[keyPath].push(results[k]);
-                }
-            }
-
-            for (let j = 0; j < others.length; j++) {
-				const otherPath = modPath + "/" + others[j]
-                const results = $.Helpers.getFilesRecursively(otherPath);
-                for (let k = 0; k < results.length; k++) {
-					if (results[k].match(/plugins[^\/]*\.js/)) {
-						const keyPath = $.Helpers.appendix(results[k]);
-						const originPath = $.Params.root + key;
-						const originFile = fs.readFileSync(originPath);
-						const originString = originFile.match(/\[.*?\];/);
-						const originData = JSON.parse(originFile);
-						const otherFile = fs.readFileSync(results[k]);
-						const otherData = JSON.parse(otherFile);
-						// TODO: Merge plugins
+						if (!$.Helpers.strEq(sourceData, reducedData)) {
+							const reducedStr = JSON.stringify(reducedData);
+							$.Helpers.deepWriteSync(overridePaths[key][i], reducedStr);
+						}
 					} else {
-						const keyPath = $.Helpers.appendix(results[k]);
-						const otherFile = fs.readFileSync(results[k]);
-						$.Helpers.deepWriteSync($.Params.root + keyPath, otherFile);
+						targetData = $.mergeData(sourceData, backupData, targetData);
 					}
-                }
-            }
-        }
-
-        Object.keys(overridePaths).forEach(function(key) {
-            const backupPath = $.Params.backupsPath + key;
-            const backupFile = fs.readFileSync(backupPath);
-            const backupData = JSON.parse(backupFile);
-
-            let targetData = JSON.parse(backupFile);
-            const sourcePaths = overridePaths[key];
-            for (let i = 0; i < sourcePaths.length; i++) {
-                const sourceFile = fs.readFileSync(sourcePaths[i]);
-                const sourceData = JSON.parse(sourceFile);
-
-                if ($.Config.reduceModData) {
-                    const reducedData = $.reduceData(backupData, sourceData)
-                    targetData = $.mergeData(backupData, reducedData, targetData);
-
-                    if (!$.Helpers.strEq(sourceData, reducedData)) {
-                        const reducedStr = JSON.stringify(reducedData);
-                        $.Helpers.deepWriteSync(sourcePaths[i], reducedStr);
-                    }
-                } else {
-                    targetData = $.mergeData(backupData, sourceData, targetData);
-                }
-            }
-
-            const path = $.Params.root + key;
-            $.Helpers.deepWriteSync(path, JSON.stringify(targetData));
-        });
+				} else if (isPlugin) {
+					const append = JSON.stringify($.Config.pluginConfig);
+					targetData = $.Helpers.arrdiff(sourceData, backupData, targetData, append);
+				} else {
+					targetData = JSON.parse(JSON.stringify(sourceData));
+				}
+			}
+			
+			const path = $.Params.root + key;
+			let targetStr = JSON.stringify(targetData);
+			if (isPlugin) targetStr = "var $plugins =\n" + targetStr;
+			$.Helpers.deepWriteSync(path, targetStr);
+		});
     };
 
     $.backup = function(path) {
@@ -301,15 +256,15 @@ ModLoader.Holder = ModLoader.Holder || {};
         }
     }
 
-    $.mergeData = function(original, source, target) {
+    $.mergeData = function(source, original, target) {
         const result = JSON.parse(JSON.stringify(target));
         if (Array.isArray(source) && Array.isArray(target)) {
             for (let i = 0; i < source.length; i++) {
                 if (source[i] == null) continue;
                 const oi = original ? original.findIndex(x => x && x["id"] === source[i]["id"]) : -1;
                 const ti = target ? target.findIndex(x => x && x["id"] === source[i]["id"]) : -1;
-                if (oi >= 0 && ti >= 0) result[ti] = $.mergeData(original[oi], source[i], target[ti]);
-                else if (ti >= 0) result[ti] = $.mergeData(target[ti], source[i], target[ti]);
+                if (oi >= 0 && ti >= 0) result[ti] = $.mergeData(source[i], original[oi], target[ti]);
+                else if (ti >= 0) result[ti] = $.mergeData(source[i], target[ti], target[ti]);
                 else result.push(source[i]);
             }
         } else {
@@ -321,7 +276,7 @@ ModLoader.Holder = ModLoader.Holder || {};
                             result[key] = $.Helpers.dedup(aux);
                         else result[key] = aux;
                     } else if ($.Config.keyMerge.includes(key)) {
-                        result[key] = $.mergeData(original[key], source[key], target[key]);
+                        result[key] = $.mergeData(source[key], original[key], target[key]);
                     } else if ($.Config.keyXDiff.includes(key)) {
                         if (Array.isArray(source[key])) {
 							result[key] = $.Helpers.arrdiff(source[key], original[key], target[key]);
@@ -339,7 +294,7 @@ ModLoader.Holder = ModLoader.Holder || {};
         return result;
     }
 
-    $.reduceData = function(original, source) {
+    $.reduceData = function(source, original) {
         const result = JSON.parse(JSON.stringify(source));
         if (Array.isArray(original) && Array.isArray(source)) {
             for (let i = 0; i < source.length; i++) {
@@ -420,6 +375,7 @@ ModLoader.Holder = ModLoader.Holder || {};
 	};
 
 	Scene_Title.prototype.mods = function() {
+		this._commandWindow.close();
 		SceneManager.push(Scene_Mods);
 	};
 	
@@ -541,6 +497,7 @@ Window_Mods.prototype.cursorLeft = function(wrap) {
 
 Window_Mods.prototype.cursorPageup = function() {
 	var index = this.index();
+	const modsPath = ModLoader.Params.modsPath
 	const modFolders = ModLoader.Helpers.getFolders(modsPath);
 	const mods = ModLoader.sortMods(modFolders);
 	ModLoader.Helpers.move(mods, index, -1);
@@ -553,6 +510,7 @@ Window_Mods.prototype.cursorPageup = function() {
 
 Window_Mods.prototype.cursorPagedown = function() {
 	var index = this.index();
+	const modsPath = ModLoader.Params.modsPath
 	const modFolders = ModLoader.Helpers.getFolders(modsPath);
 	const mods = ModLoader.sortMods(modFolders);
 	ModLoader.Helpers.move(mods, index, 1);
