@@ -11,7 +11,7 @@ For a modder to add support to a game that does not come with this plugin pre-in
 A user can install mods by adding them inside the `www/mods` folder, independently of whether those mods were designed with this plugin in mind or not.
 For example, if a modder distributes a mod in the form of a folder like `example/www/...`, installing said mod so that it's loaded through the plugin is as simple as drag and dropping the whole thing, so that it looks like `www/mods/example`.
 
-The plugin can handle working on top of an already modified game, but a clean install is always recommended. Once the plugin is installed, there should generally be no need to install mods the usual way, instead of how it's explained here.
+The plugin can handle working on top of an already modified game, but a clean install is always recommended. Once the plugin is installed, there should be no need to install mods the usual way, instead of how it's explained here.
 
 ## Known Issues
 - The plugin doesn't know how to solve ID conflicts. Mod authors have to agree on the ID their mods use.
