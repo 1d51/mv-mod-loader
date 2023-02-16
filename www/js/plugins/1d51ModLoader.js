@@ -12,17 +12,17 @@ var ModLoader = ModLoader || {};
 ModLoader.Helpers = ModLoader.Helpers || {};
 ModLoader.Params = ModLoader.Params || {};
 ModLoader.Config = ModLoader.Config || {};
-ModLoader.Holder = ModLoader.Holder || {};
+ModLoader.Holders = ModLoader.Holders || {};
 
 (function($) {
 	$.Config.reduceModData = true;
 	$.Config.forceBackup = false;
-	
+
 	$.Config.pluginConfig = {"name":"1d51ModLoader","status":true,"description":"A simple mod loader for RPG Maker MV.","parameters":{}};
 	$.Config.keyCombine = ["equips", "note", "traits", "learnings", "effects"];
     $.Config.keyMerge = ["events"];
     $.Config.keyXDiff = ["list"];
-	
+
     $.Helpers.strEq = function(left, right) {
 		return JSON.stringify(left) === JSON.stringify(right);
 	}
@@ -47,7 +47,7 @@ ModLoader.Holder = ModLoader.Holder || {};
         }
         return a;
     };
-	
+
 	$.Helpers.move = function(array, index, delta) {
 		const newIndex = index + delta;
 		if (newIndex < 0 || newIndex == array.length) return;
@@ -77,7 +77,7 @@ ModLoader.Holder = ModLoader.Holder || {};
         }
         return files;
     };
-	
+
 	$.Helpers.getFolders = function(path) {
 		const folders = [];
         const foldersInPath = fs.readdirSync(path);
@@ -89,7 +89,7 @@ ModLoader.Holder = ModLoader.Holder || {};
         }
         return folders;
 	};
-	
+
 	$.Helpers.getFiles = function(path) {
 		const files = [];
         const filesInPath = fs.readdirSync(path);
@@ -121,14 +121,14 @@ ModLoader.Holder = ModLoader.Holder || {};
         const index = path.indexOf('/www');
         return path.substr(index + 5);
     }
-	
+
 	$.Helpers.parse = function(file, variable = false) {
 		if (!variable) return JSON.parse(file);
         let str = file.toString().match(/=\n*(\[[\s\S]*)/)[1];
 		str = str.replace(/;\n*$/, "");
 		return JSON.parse(str);
     }
-	
+
 	$.Helpers.arrdiff = function(source, original, target, append = null) {
 		const sh = $.Helpers.hashCode(JSON.stringify(source))
 		const oh = $.Helpers.hashCode(JSON.stringify(original))
@@ -154,14 +154,14 @@ ModLoader.Holder = ModLoader.Holder || {};
 		return rs.map((str) => JSON.parse(str));
 		
 	}
-	
+
 	/************************************************************************************/
 
     $.Params.root = $.Helpers.createPath("");
     $.Params.modsPath = $.Params.root + "mods/";
     $.Params.backupsPath = $.Params.root + "backups/";
     $.Params.diffsPath = $.Params.root + "diffs/";
-	
+
 	$.Params.reboot = false;
 
     $.readMods = function () {
@@ -321,7 +321,7 @@ ModLoader.Holder = ModLoader.Holder || {};
 
         return result;
     }
-	
+
 	$.sortMods = function(mods) {
 		const orderPath = $.Params.root + "order.json";		
 		if (fs.existsSync(orderPath)) {
@@ -339,14 +339,14 @@ ModLoader.Holder = ModLoader.Holder || {};
 		
 		return mods;
 	}
-	
+
 	$.getEnabled = function(symbol) {
 		const enabledPath = $.Params.root + "enabled.json";
 		if (!fs.existsSync(enabledPath)) return false;
 		const enabledFile = fs.readFileSync(enabledPath);
 		return JSON.parse(enabledFile)[symbol];
 	}
-	
+
 	$.setEnabled = function(symbol, value) {
 		const enabledPath = $.Params.root + "enabled.json";
 		let enabled = {};
@@ -359,18 +359,33 @@ ModLoader.Holder = ModLoader.Holder || {};
 		enabled[symbol] = value;
 		$.Helpers.deepWriteSync(enabledPath, JSON.stringify(enabled));
 	}
-			
-	/************************************************************************************/
 	
-	$.Holder.makeCommandList = Window_TitleCommand.prototype.makeCommandList;
+	$.loadMetadata = function(mod) {
+		const metadataPath = $.Params.modsPath + mod + "/metadata.json";
+		if (fs.existsSync(metadataPath)) {
+			const metadataFile = fs.readFileSync(metadataPath);
+			return JSON.parse(metadataFile);
+		} else {
+			return {
+				"name": mod,
+				"version": "N/A",
+				"dependencies": []
+			};
+		}
+	}
+
+
+	/************************************************************************************/
+
+	$.Holders.makeCommandList = Window_TitleCommand.prototype.makeCommandList;
 	Window_TitleCommand.prototype.makeCommandList = function() {
-		$.Holder.makeCommandList.call(this);
+		$.Holders.makeCommandList.call(this);
 		this.addCommand("Mods", 'mods');
 	};
-	
-	$.Holder.createCommandWindow = Scene_Title.prototype.createCommandWindow;
+
+	$.Holders.createCommandWindow = Scene_Title.prototype.createCommandWindow;
 	Scene_Title.prototype.createCommandWindow = function() {
-		$.Holder.createCommandWindow.call(this);
+		$.Holders.createCommandWindow.call(this);
 		this._commandWindow.setHandler('mods', this.mods.bind(this));
 	};
 
@@ -378,7 +393,7 @@ ModLoader.Holder = ModLoader.Holder || {};
 		this._commandWindow.close();
 		SceneManager.push(Scene_Mods);
 	};
-	
+
 	$.readMods();
 
 })(ModLoader);
@@ -448,7 +463,9 @@ Window_Mods.prototype.makeCommandList = function() {
 	const modFolders = ModLoader.Helpers.getFolders(modsPath);
 	const mods = ModLoader.sortMods(modFolders);
 	for (let i = 0; i < mods.length; i++ ) {
-		this.addCommand("↕ " + mods[i], mods[i]);
+		const metadata = ModLoader.loadMetadata(mods[i]);
+		const title = metadata.name + " [" + metadata.version + "]"
+		this.addCommand(title, mods[i]);
 	}
 };
 
