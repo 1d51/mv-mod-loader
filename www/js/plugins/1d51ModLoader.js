@@ -408,10 +408,39 @@ ModLoader.Holders = ModLoader.Holders || {};
 		} else {
 			return {
 				"name": mod,
-				"version": "N/A",
-				"dependencies": []
+				"version": "",
+				"dependencies": [],
+				"incompatible": []
 			};
 		}
+	};
+
+	$.getSelectabe = function(mod) {
+		const modsPath = $.Params.modsPath
+		const modFolders = $.Helpers.getFolders(modsPath);
+		const mods = this.sortMods(modFolders).filter(m => this.getEnabled(m));
+		const meta = mods.map(m => this.loadMetadata(m));
+		const metadata = this.loadMetadata(mod);
+		for (let i = 0; i < meta.length; i++) {
+			const incompatible = meta[i]["incompatible"] || [];
+			for (let j = 0; j < incompatible; j++) {
+				if (metadata["name"] === incompatible[j]["name"]) {
+					if (!metadata["version"] || !incompatible[j]["version"]) return false;
+					if (metadata["version"] === incompatible[j]["version"]) return false;
+				}
+			}
+		}
+		const incompatible = metadata["incompatible"] || [];
+		for (let i = 0; i < incompatible.length; i++) {
+			for (let j = 0; j < meta.length; j++) {
+				if (incompatible[i]["name"] === meta[j]["name"]) {
+					if (!incompatible[i]["version"] || !meta[j]["version"]) return false;
+					if (incompatible[i]["version"] === meta[j]["version"]) return false;
+				}
+			}
+		}
+		
+		return true;
 	};
 
 	/************************************************************************************/
@@ -503,8 +532,9 @@ Window_Mods.prototype.makeCommandList = function() {
 	const mods = ModLoader.sortMods(modFolders);
 	for (let i = 0; i < mods.length; i++ ) {
 		const metadata = ModLoader.loadMetadata(mods[i]);
-		const title = metadata.name + " [" + metadata.version + "]"
-		this.addCommand(title, mods[i]);
+		const title = metadata.name + " [" + (metadata.version || "N/A") + "]"
+		const selectable = ModLoader.getSelectabe(mods[i]);
+		this.addCommand(title, mods[i], selectable);
 	}
 };
 
@@ -566,10 +596,13 @@ Window_Mods.prototype.cursorPagedown = function() {
 };
 
 Window_Mods.prototype.changeValue = function(symbol, value) {
+	if (!ModLoader.getSelectabe(symbol)) return;
 	var lastValue = ModLoader.getEnabled(symbol);
 	if (lastValue !== value) {
 		ModLoader.setEnabled(symbol, value);
 		this.redrawItem(this.findSymbol(symbol));
 		SoundManager.playCursor();
-	} ModLoader.Params.reboot = true;
+	} 
+	ModLoader.Params.reboot = true;
+	this.refresh();
 };
