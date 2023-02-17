@@ -33,3 +33,4 @@ When defining a dependency or incompatibility, it's not necessary to specify a `
 ## Known Issues
 - The plugin doesn't know how to solve ID conflicts. Mod authors have to agree on the ID their mods use.
 - Mod loading is **slow**. The first launch after changing the mod list can take a few minutes.
+- You can potentially save your users the trouble of having to wait by including the **diffs**.
