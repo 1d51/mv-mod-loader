@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 0.3
+ * @version 1.0
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
  
@@ -378,8 +378,22 @@ ModLoader.Holders = ModLoader.Holders || {};
 		const modsPath = $.Params.modsPath
 		const modFolders = $.Helpers.getFolders(modsPath);
 		const mods = $.sortMods(modFolders);
-		$.Helpers.move(mods, index, move);
 		
+		const position = index + move;
+		if (position > 0 && position < mods.length) {
+			const im = this.loadMetadata(mods[index]);
+			const pm = this.loadMetadata(mods[position]);
+			
+			if (move >= 0) {
+				const names = pm["dependencies"].map(d => d["name"]);
+				if (names.includes(im["name"])) return;
+			} else {
+				const names = im["dependencies"].map(d => d["name"]);
+				if (names.includes(pm["name"])) return;
+			}
+		}
+		
+		$.Helpers.move(mods, index, move);
 		const schema = this.loadSchema();
 		schema["order"] = mods;
 		this.writeSchema(schema);
