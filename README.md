@@ -11,10 +11,10 @@ A user can install mods by adding them inside the `www/mods` folder, independent
 The plugin can handle working on top of an already modified game, but a clean install is always recommended. Once the plugin is installed, there should be no need to install mods the usual way, instead of how it's explained here.
 
 ## User Instructions
-When the plugin is loaded into a game, a new menu option will be added to the start menu, called **mods**. In said menu, it possible to enable and disable mods. It's also possible to reorder mods using **Page Up** and **Page Down** (usually a combination of the **FN** key and arrow keys). When the list of active mods or their order changes, the game will shut down and, on next launch, it'll load with said mods.
+When the plugin is loaded into a game, a new menu option will be added to the start menu, called **mods**. In said menu, it's possible to enable and disable mods. It's also possible to reorder mods using **Page Up** and **Page Down** (usually a combination of the **FN** key and arrow keys). When the list of active mods or their order changes, the game will shut down and, on next launch, it'll load with said mods.
 
 ## Packaging Instructions
-The mod loader does not require any extra work on the side of either the mod makers or the users to function, but it's possible to provide it with some information about the mods to customize their behaviour. A mod folder can include a `metadata.json` file with the following format:
+The mod loader does not require any extra work on the side of either the mod makers or the users to function, but it's possible to provide it with some information about the mods to customize their behavior. A mod folder can include a `metadata.json` file with the following format:
 ```
 {
   "name": "",
@@ -32,4 +32,4 @@ The mod loader does not require any extra work on the side of either the mod mak
 When defining a dependency or incompatibility, it's not necessary to specify a `version`. If it's not specified, the entry will apply to all versions of the mod with the given `name`. If the mod that we want to flag as either thing does not have a `metadata.json` file itself, we can refer to it by the name of its folder.
 ## Known Issues
 - The plugin doesn't know how to solve ID conflicts. Mod authors have to agree on the ID their mods use.
-- This is a WIP and bugs are to be expected.
+- Mod loading is **slow**. The first launch after changing the mod list can take a few minutes.
