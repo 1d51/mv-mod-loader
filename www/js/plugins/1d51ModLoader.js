@@ -215,9 +215,14 @@ ModLoader.Holders = ModLoader.Holders || {};
 				
 				if (key.split("/")[0].includes("data")) {
 					if ($.Config.reduceModData) {
-						const reducedData = $.reduceData(sourceData, backupData)
+						const reducedData = $.reduceData(sourceData, backupData);
+						if (reducedData == null) {
+							fs.unlink(overridePaths[key][i]);
+							continue;
+						}
+						
 						targetData = $.mergeData(reducedData, backupData, targetData);
-
+						
 						if (!$.Helpers.strEq(sourceData, reducedData)) {
 							const reducedStr = JSON.stringify(reducedData);
 							$.Helpers.deepWriteSync(overridePaths[key][i], reducedStr);
@@ -295,6 +300,10 @@ ModLoader.Holders = ModLoader.Holders || {};
     }
 
     $.reduceData = function(source, original) {
+		const ss = JSON.stringify(source);
+		const os = JSON.stringify(original);
+		if (ss === os) return null;
+		
         const result = JSON.parse(JSON.stringify(source));
         if (Array.isArray(original) && Array.isArray(source)) {
             for (let i = 0; i < source.length; i++) {
