@@ -25,7 +25,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 
     $.Helpers.strEq = function(left, right) {
 		return JSON.stringify(left) === JSON.stringify(right);
-	}
+	};
 
     $.Helpers.hashCode = function(string){
         let hash = 0;
@@ -35,7 +35,7 @@ ModLoader.Holders = ModLoader.Holders || {};
             hash = hash & hash;
         }
         return hash;
-    }
+    };
 
     $.Helpers.dedup = function(arr) {
         const a = arr.concat();
@@ -53,7 +53,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 		if (newIndex < 0 || newIndex == array.length) return;
 		const indexes = [index, newIndex].sort((a, b) => a - b);
 		array.splice(indexes[0], 2, array[indexes[1]], array[indexes[0]]);
-	}
+	};
 
     $.Helpers.createPath = function(wrath) {
 		const oldVersion = window.location.pathname !== "/index.html";
@@ -105,7 +105,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Helpers.deepWriteSync = function(path, file) {
         this.ensureDirectoryExistence(path);
         fs.writeFileSync(path, file);
-    }
+    };
 
     $.Helpers.ensureDirectoryExistence = function(path) {
         const index = path.lastIndexOf('/');
@@ -115,19 +115,19 @@ ModLoader.Holders = ModLoader.Holders || {};
         if (fs.existsSync(directory)) return;
         this.ensureDirectoryExistence(directory);
         fs.mkdirSync(directory);
-    }
+    };
 
     $.Helpers.appendix = function(path) {
         const index = path.indexOf('/www');
         return path.substr(index + 5);
-    }
+    };
 
 	$.Helpers.parse = function(file, variable = false) {
 		if (!variable) return JSON.parse(file);
         let str = file.toString().match(/=\n*(\[[\s\S]*)/)[1];
 		str = str.replace(/;\n*$/, "");
 		return JSON.parse(str);
-    }
+    };
 
 	$.Helpers.arrdiff = function(source, original, target, append = null) {
 		const sh = $.Helpers.hashCode(JSON.stringify(source))
@@ -153,7 +153,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 		if (append && rs.indexOf(JSON.stringify(append)) === -1) rs.push(append);
 		return rs.map((str) => JSON.parse(str));
 		
-	}
+	};
 
 	/************************************************************************************/
 
@@ -171,6 +171,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 		
 		const modFolders = $.Helpers.getFolders($.Params.modsPath);
         const mods = $.sortMods(modFolders).filter(m => $.getEnabled(m));
+		if (this.checkLast(mods)) return;
 		
 		if (mods.length === 0) {
 			const files = $.Helpers.getFilesRecursively($.Params.backupsPath);
@@ -259,7 +260,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                 $.Helpers.deepWriteSync(backupPath, backupFile);
             }
         }
-    }
+    };
 
     $.mergeData = function(source, original, target) {
         const result = JSON.parse(JSON.stringify(target));
@@ -297,14 +298,14 @@ ModLoader.Holders = ModLoader.Holders || {};
         }
 
         return result;
-    }
+    };
 
     $.reduceData = function(source, original) {
 		const ss = JSON.stringify(source);
 		const os = JSON.stringify(original);
 		if (ss === os) return null;
 		
-        const result = JSON.parse(JSON.stringify(source));
+        const result = JSON.parse(ss);
         if (Array.isArray(original) && Array.isArray(source)) {
             for (let i = 0; i < source.length; i++) {
                 if (source[i] == null) continue;
@@ -329,46 +330,76 @@ ModLoader.Holders = ModLoader.Holders || {};
         }
 
         return result;
-    }
+    };
 
-	$.sortMods = function(mods) {
-		const orderPath = $.Params.root + "order.json";		
-		if (fs.existsSync(orderPath)) {
-			const orderFile = fs.readFileSync(orderPath);
-			let order = JSON.parse(orderFile);
-			order = order.filter(m => mods.includes(m));
-			for (let i = 0; i < mods.length; i++) {
-				if (!order.includes(mods[i])) {
-					order.push(mods[i]);
-				}
-			}
-			
-			return order;
+	$.loadSchema = function() {
+		const schemaPath = $.Params.root + "schema.json";
+		if (fs.existsSync(schemaPath)) {
+			const schemaFile = fs.readFileSync(schemaPath);
+			return JSON.parse(schemaFile);
+		} else {
+			return {
+				"enabled": {},
+				"order": [],
+				"last": []
+			};
 		}
-		
-		return mods;
-	}
+	};
+	
+	$.writeSchema = function(schema) {
+		const schemaPath = $.Params.root + "schema.json";
+		$.Helpers.deepWriteSync(schemaPath, JSON.stringify(schema));
+	};
 
 	$.getEnabled = function(symbol) {
-		const enabledPath = $.Params.root + "enabled.json";
-		if (!fs.existsSync(enabledPath)) return false;
-		const enabledFile = fs.readFileSync(enabledPath);
-		return JSON.parse(enabledFile)[symbol];
-	}
+		const enabled = this.loadSchema()["enabled"];
+		return enabled[symbol] || false;
+	};
 
 	$.setEnabled = function(symbol, value) {
-		const enabledPath = $.Params.root + "enabled.json";
-		let enabled = {};
-		
-		if (fs.existsSync(enabledPath)) {
-			const enabledFile = fs.readFileSync(enabledPath);
-			enabled = JSON.parse(enabledFile);
-		}
+		const schema = this.loadSchema();
+		schema["enabled"][symbol] = value;
+		this.writeSchema(schema);
+	};
 
-		enabled[symbol] = value;
-		$.Helpers.deepWriteSync(enabledPath, JSON.stringify(enabled));
-	}
-	
+	$.sortMods = function(mods) {
+		let order = this.loadSchema()["order"];
+		order = order.filter(m => mods.includes(m));
+		for (let i = 0; i < mods.length; i++) {
+			if (!order.includes(mods[i])) {
+				order.push(mods[i]);
+			}
+		}
+		
+		return order;
+	};
+
+	$.reorderMod = function(index, move) {
+		const modsPath = $.Params.modsPath
+		const modFolders = $.Helpers.getFolders(modsPath);
+		const mods = $.sortMods(modFolders);
+		$.Helpers.move(mods, index, move);
+		
+		const schema = this.loadSchema();
+		schema["order"] = mods;
+		this.writeSchema(schema);
+	};
+
+	$.checkLast = function(mods) {
+		const schema = this.loadSchema();
+		const titles = mods.map(mod => {
+			const metadata = this.loadMetadata(mod);
+			return metadata.name + " [" + metadata.version + "]"
+		});
+		
+		const old = JSON.parse(JSON.stringify(schema["last"]));
+		
+		schema["last"] = titles;
+		this.writeSchema(schema);
+		
+		return JSON.stringify(titles) === JSON.stringify(old);
+	};
+
 	$.loadMetadata = function(mod) {
 		const metadataPath = $.Params.modsPath + mod + "/metadata.json";
 		if (fs.existsSync(metadataPath)) {
@@ -381,8 +412,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 				"dependencies": []
 			};
 		}
-	}
-
+	};
 
 	/************************************************************************************/
 
@@ -438,7 +468,7 @@ Scene_Mods.prototype.createModsWindow = function() {
 Scene_Mods.prototype.popScene = function() {
 	if (ModLoader.Params.reboot) SceneManager.exit()
 	Scene_MenuBase.prototype.popScene.call(this);
-}
+};
 
 /************************************************************************************/
 
@@ -523,26 +553,14 @@ Window_Mods.prototype.cursorLeft = function(wrap) {
 
 Window_Mods.prototype.cursorPageup = function() {
 	var index = this.index();
-	const modsPath = ModLoader.Params.modsPath
-	const modFolders = ModLoader.Helpers.getFolders(modsPath);
-	const mods = ModLoader.sortMods(modFolders);
-	ModLoader.Helpers.move(mods, index, -1);
-
-	const orderPath = ModLoader.Params.root + "order.json";
-	ModLoader.Helpers.deepWriteSync(orderPath, JSON.stringify(mods));
+	ModLoader.reorderMod(index, -1);
 	ModLoader.Params.reboot = true;
 	this.refresh();
 };
 
 Window_Mods.prototype.cursorPagedown = function() {
 	var index = this.index();
-	const modsPath = ModLoader.Params.modsPath
-	const modFolders = ModLoader.Helpers.getFolders(modsPath);
-	const mods = ModLoader.sortMods(modFolders);
-	ModLoader.Helpers.move(mods, index, 1);
-
-	const orderPath = ModLoader.Params.root + "order.json";
-	ModLoader.Helpers.deepWriteSync(orderPath, JSON.stringify(mods));
+	ModLoader.reorderMod(index, 1);
 	ModLoader.Params.reboot = true;
 	this.refresh();
 };
