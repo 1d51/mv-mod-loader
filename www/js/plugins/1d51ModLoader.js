@@ -439,6 +439,17 @@ ModLoader.Holders = ModLoader.Holders || {};
 				}
 			}
 		}
+		const dependencies = metadata["dependencies"] || [];
+		for (let i = 0; i < dependencies.length; i++) {
+			let found = false;
+			for (let j = 0; j < meta.length; j++) {
+				if (dependencies[i]["name"] === meta[j]["name"]) {
+					if (!dependencies[i]["version"] || !meta[j]["version"]) found = true;
+					if (dependencies[i]["version"] === meta[j]["version"]) found = true;
+				}
+			}
+			if (!found) return false;
+		}
 		
 		return true;
 	};
