@@ -32,4 +32,4 @@ The mod loader does not require any extra work on the side of either the mod mak
 When defining a dependency or incompatibility, it's not necessary to specify a `version`. If it's not specified, the entry will apply to all versions of the mod with the given `name`. If the mod that we want to flag as either thing does not have a `metadata.json` file itself, we can refer to it by the name of its folder.
 ## Known Issues
 - The plugin doesn't know how to solve ID conflicts. Mod authors have to agree on the ID their mods use.
-- Mod loading is **slow**. The first launch after changing the mod list can take a few minutes, depending on the number of mods and their size. You can potentially save your users the trouble of having to wait by including the **diffs**.
+- Mod loading is **slow**. The first launch after changing the mod list can take a few minutes, depending on number of mods and size. You can potentially save your users the trouble of having to wait by including the **diffs**.
