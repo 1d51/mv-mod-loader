@@ -15,9 +15,6 @@ ModLoader.Config = ModLoader.Config || {};
 ModLoader.Holders = ModLoader.Holders || {};
 
 (function($) {
-	$.Config.reduceModData = true;
-	$.Config.forceBackup = false;
-
 	$.Config.pluginConfig = {"name":"1d51ModLoader","status":true,"description":"A simple mod loader for RPG Maker MV.","parameters":{}};
 	$.Config.keyCombine = ["equips", "note", "traits", "learnings", "effects"];
     $.Config.keyMerge = ["events"];
@@ -215,21 +212,17 @@ ModLoader.Holders = ModLoader.Holders || {};
 				const sourceData = $.Helpers.parse(sourceFile, isPlugin);
 				
 				if (key.split("/")[0].includes("data")) {
-					if ($.Config.reduceModData) {
-						const reducedData = $.reduceData(sourceData, backupData);
-						if (reducedData == null) {
-							fs.unlink(overridePaths[key][i]);
-							continue;
-						}
-						
-						targetData = $.mergeData(reducedData, backupData, targetData);
-						
-						if (!$.Helpers.strEq(sourceData, reducedData)) {
-							const reducedStr = JSON.stringify(reducedData);
-							$.Helpers.deepWriteSync(overridePaths[key][i], reducedStr);
-						}
-					} else {
-						targetData = $.mergeData(sourceData, backupData, targetData);
+					const reducedData = $.reduceData(sourceData, backupData);
+					if (reducedData == null) {
+						fs.unlink(overridePaths[key][i]);
+						continue;
+					}
+					
+					targetData = $.mergeData(reducedData, backupData, targetData);
+					
+					if (!$.Helpers.strEq(sourceData, reducedData)) {
+						const reducedStr = JSON.stringify(reducedData);
+						$.Helpers.deepWriteSync(overridePaths[key][i], reducedStr);
 					}
 				} else if (isPlugin) {
 					const append = JSON.stringify($.Config.pluginConfig);
@@ -251,7 +244,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         const backupPath = $.Params.backupsPath + keyPath;
         const originPath = $.Params.root + keyPath;
 
-        if (!fs.existsSync(backupPath) || $.Config.forceBackup) {
+        if (!fs.existsSync(backupPath)) {
             if (fs.existsSync(originPath)) {
                 const backupFile = fs.readFileSync(originPath);
                 $.Helpers.deepWriteSync(backupPath, backupFile);
@@ -358,6 +351,18 @@ ModLoader.Holders = ModLoader.Holders || {};
 
 	$.setEnabled = function(symbol, value) {
 		const schema = this.loadSchema();
+		
+		if (!value) {
+			const keys = Object.keys(schema["enabled"]);
+			for (let i = 0; i < keys.length; i++) {
+				if (schema["enabled"][keys[i]]) {
+					const metadata = this.loadMetadata(keys[i]);
+					const names = metadata["dependencies"].map(d => d["name"]);
+					if (names.includes(symbol)) schema["enabled"][keys[i]] = false;
+				}
+			}
+		}
+		
 		schema["enabled"][symbol] = value;
 		this.writeSchema(schema);
 	};
@@ -367,7 +372,20 @@ ModLoader.Holders = ModLoader.Holders || {};
 		order = order.filter(m => mods.includes(m));
 		for (let i = 0; i < mods.length; i++) {
 			if (!order.includes(mods[i])) {
-				order.push(mods[i]);
+				let inserted = false;
+				for (let j = 0; j < order.length; j++) {
+					const mm = this.loadMetadata(mods[i]);
+					const om = this.loadMetadata(order[j]);
+					const names = om["dependencies"].map(d => d["name"]);
+					if (names.includes(mm["name"])) {
+						order.splice(j, 0, mods[i]);
+						inserted = true;
+						break;
+					}
+				} 
+				if (!inserted) {
+					order.push(mods[i]);
+				}
 			}
 		}
 		
@@ -473,7 +491,9 @@ ModLoader.Holders = ModLoader.Holders || {};
 	$.Holders.makeCommandList = Window_TitleCommand.prototype.makeCommandList;
 	Window_TitleCommand.prototype.makeCommandList = function() {
 		$.Holders.makeCommandList.call(this);
-		this.addCommand("Mods", 'mods');
+		const modsPath = ModLoader.Params.modsPath;
+		const modFolders = ModLoader.Helpers.getFolders(modsPath);
+		this.addCommand("Mods", 'mods', modFolders.length > 0);
 	};
 
 	$.Holders.createCommandWindow = Scene_Title.prototype.createCommandWindow;
