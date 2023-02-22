@@ -3,11 +3,11 @@
  * @version 1.0
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
- 
-const fs = require('fs');
-const xdiff = require("./js/libs/xdiff");
 
 var ModLoader = ModLoader || {};
+
+ModLoader.fs = require('fs');
+ModLoader.xdiff = require("./js/libs/xdiff");
 
 ModLoader.Helpers = ModLoader.Helpers || {};
 ModLoader.Params = ModLoader.Params || {};
@@ -65,10 +65,10 @@ ModLoader.Holders = ModLoader.Holders || {};
 
     $.Helpers.getFilesRecursively = function(path) {
         const files = [];
-        const filesInPath = fs.readdirSync(path);
+        const filesInPath = $.fs.readdirSync(path);
         for (const file of filesInPath) {
             const absolute = path + "/" + file;
-            if (fs.statSync(absolute).isDirectory()) {
+            if ($.fs.statSync(absolute).isDirectory()) {
                 files.push(...this.getFilesRecursively(absolute));
             } else files.push(absolute);
         }
@@ -77,10 +77,10 @@ ModLoader.Holders = ModLoader.Holders || {};
 
 	$.Helpers.getFolders = function(path) {
 		const folders = [];
-        const foldersInPath = fs.readdirSync(path);
+        const foldersInPath = $.fs.readdirSync(path);
         for (const folder of foldersInPath) {
             const absolute = path + "/" + folder;
-            if (fs.statSync(absolute).isDirectory()) {
+            if ($.fs.statSync(absolute).isDirectory()) {
                 folders.push(folder);
             }
         }
@@ -89,10 +89,10 @@ ModLoader.Holders = ModLoader.Holders || {};
 
 	$.Helpers.getFiles = function(path) {
 		const files = [];
-        const filesInPath = fs.readdirSync(path);
+        const filesInPath = $.fs.readdirSync(path);
         for (const file of filesInPath) {
             const absolute = path + "/" + file;
-            if (!fs.statSync(absolute).isDirectory()) {
+            if (!$.fs.statSync(absolute).isDirectory()) {
                 files.push(file);
             }
         }
@@ -101,7 +101,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 
     $.Helpers.deepWriteSync = function(path, file) {
         this.ensureDirectoryExistence(path);
-        fs.writeFileSync(path, file);
+        $.fs.writeFileSync(path, file);
     };
 
     $.Helpers.ensureDirectoryExistence = function(path) {
@@ -109,9 +109,9 @@ ModLoader.Holders = ModLoader.Holders || {};
         if (index === -1) return;
 
         const directory = path.substring(0, index);
-        if (fs.existsSync(directory)) return;
+        if ($.fs.existsSync(directory)) return;
         this.ensureDirectoryExistence(directory);
-        fs.mkdirSync(directory);
+        $.fs.mkdirSync(directory);
     };
 
     $.Helpers.appendix = function(path) {
@@ -135,18 +135,18 @@ ModLoader.Holders = ModLoader.Holders || {};
 		const path = $.Params.diffsPath + xx + ".json"
 		let diff = null;
 		
-		if (fs.existsSync(path)) {
-			const diffFile = fs.readFileSync(path);
+		if ($.fs.existsSync(path)) {
+			const diffFile = $.fs.readFileSync(path);
 			diff = JSON.parse(diffFile);
 		} else {
 			const ss = source.map((obj) => JSON.stringify(obj));
 			const ts = target.map((obj) => JSON.stringify(obj));
-			diff = xdiff.diff3(ss, os, ts);
+			diff = $.xdiff.diff3(ss, os, ts);
 
 			$.Helpers.deepWriteSync(path, JSON.stringify(diff));
 		}
 		
-		const rs = xdiff.patch(os, diff);
+		const rs = $.xdiff.patch(os, diff);
 		if (append && rs.indexOf(JSON.stringify(append)) === -1) rs.push(append);
 		return rs.map((str) => JSON.parse(str));
 		
@@ -176,7 +176,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 				const index = files[i].indexOf('/backups');
 				const keyPath = files[i].substr(index + 10);
 				const originPath = $.Params.root + keyPath;
-				const backupFile = fs.readFileSync(files[i]);
+				const backupFile = $.fs.readFileSync(files[i]);
                 $.Helpers.deepWriteSync(originPath, backupFile);
 			} return;
 		}
@@ -189,7 +189,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 				const keyPath = $.Helpers.appendix(files[j]);
 				if (!keyPath.match(/(\.json)|(plugins[^\/]*\.js)/)) {
 					const originPath = $.Params.root + keyPath;
-					const sourceFile = fs.readFileSync(files[j]);
+					const sourceFile = $.fs.readFileSync(files[j]);
 					$.Helpers.deepWriteSync(originPath, sourceFile);
 					continue;
 				}
@@ -203,18 +203,18 @@ ModLoader.Holders = ModLoader.Holders || {};
 		Object.keys(overridePaths).forEach(function(key) {
 			const isPlugin = key.match(/plugins[^\/]*\.js/);
 			const backupPath = $.Params.backupsPath + key;
-			const backupFile = fs.readFileSync(backupPath);
+			const backupFile = $.fs.readFileSync(backupPath);
 			const backupData = $.Helpers.parse(backupFile, isPlugin);
 			
 			let targetData = $.Helpers.parse(backupFile, isPlugin);
 			for (let i = 0; i < overridePaths[key].length; i++) {
-				const sourceFile = fs.readFileSync(overridePaths[key][i]);
+				const sourceFile = $.fs.readFileSync(overridePaths[key][i]);
 				const sourceData = $.Helpers.parse(sourceFile, isPlugin);
 				
 				if (key.split("/")[0].includes("data")) {
 					const reducedData = $.reduceData(sourceData, backupData);
 					if (reducedData == null) {
-						fs.unlink(overridePaths[key][i]);
+						$.fs.unlink(overridePaths[key][i]);
 						continue;
 					}
 					
@@ -244,12 +244,12 @@ ModLoader.Holders = ModLoader.Holders || {};
         const backupPath = $.Params.backupsPath + keyPath;
         const originPath = $.Params.root + keyPath;
 
-        if (!fs.existsSync(backupPath)) {
-            if (fs.existsSync(originPath)) {
-                const backupFile = fs.readFileSync(originPath);
+        if (!$.fs.existsSync(backupPath)) {
+            if ($.fs.existsSync(originPath)) {
+                const backupFile = $.fs.readFileSync(originPath);
                 $.Helpers.deepWriteSync(backupPath, backupFile);
             } else {
-                const backupFile = fs.readFileSync(path)
+                const backupFile = $.fs.readFileSync(path)
                 $.Helpers.deepWriteSync(backupPath, backupFile);
             }
         }
@@ -280,8 +280,8 @@ ModLoader.Holders = ModLoader.Holders || {};
                         if (Array.isArray(source[key])) {
 							result[key] = $.Helpers.arrdiff(source[key], original[key], target[key]);
                         } else {
-                            const diff = xdiff.diff3(source[key], original[key], target[key]);
-                            result[key] = xdiff.patch(original[key], diff);
+                            const diff = $.xdiff.diff3(source[key], original[key], target[key]);
+                            result[key] = $.xdiff.patch(original[key], diff);
                         }
                     } else if (!result[key] || source[key]){
 						result[key] = source[key];
@@ -327,8 +327,8 @@ ModLoader.Holders = ModLoader.Holders || {};
 
 	$.loadSchema = function() {
 		const schemaPath = $.Params.root + "schema.json";
-		if (fs.existsSync(schemaPath)) {
-			const schemaFile = fs.readFileSync(schemaPath);
+		if ($.fs.existsSync(schemaPath)) {
+			const schemaFile = $.fs.readFileSync(schemaPath);
 			return JSON.parse(schemaFile);
 		} else {
 			return {
@@ -434,8 +434,8 @@ ModLoader.Holders = ModLoader.Holders || {};
 
 	$.loadMetadata = function(mod) {
 		const metadataPath = $.Params.modsPath + mod + "/metadata.json";
-		if (fs.existsSync(metadataPath)) {
-			const metadataFile = fs.readFileSync(metadataPath);
+		if ($.fs.existsSync(metadataPath)) {
+			const metadataFile = $.fs.readFileSync(metadataPath);
 			return JSON.parse(metadataFile);
 		} else {
 			return {
