@@ -1,4 +1,4 @@
-# mv-mod-loader
+# MV Mod Loader
 A mod loader for RPG Maker MV games. It uses the xdiff library implemented by [Dominic Tarr](https://github.com/dominictarr) to combine complex JSON files (think CommonEvents.json), and some heuristics to handle simpler files (think Items.json). By making a backup of the game's original files on first launch after install, it then merges the changes made by the different mods on bootup, and overrides the game's files, allowing users to easily change the mods they have installed. To make game bootup faster, it compresses mods so that they only contain relevant changes in their files. It also stores diffs between files once computed, to further speed things up.
 
 ## Install Instructions
