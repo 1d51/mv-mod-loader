@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 1.0.1
+ * @version 1.1.0
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -118,6 +118,11 @@ ModLoader.Holders = ModLoader.Holders || {};
         const index = path.indexOf('/www');
         return path.substr(index + 5);
     };
+	
+	$.Helpers.modName = function(path) {
+        const index = path.indexOf('/mods');
+        return path.substr(index + 6).split('/')[0];
+    };
 
 	$.Helpers.parse = function(file, variable = false) {
 		if (!variable) return JSON.parse(file);
@@ -143,6 +148,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 			const ts = target.map((obj) => JSON.stringify(obj));
 			diff = $.xdiff.diff3(ss, os, ts);
 
+			if (diff == null) return original;
 			$.Helpers.deepWriteSync(path, JSON.stringify(diff));
 		}
 		
@@ -208,6 +214,9 @@ ModLoader.Holders = ModLoader.Holders || {};
 			
 			let targetData = $.Helpers.parse(backupFile, isPlugin);
 			for (let i = 0; i < overridePaths[key].length; i++) {
+				const mod = $.Helpers.modName(overridePaths[key][i]);
+				const metadata = $.loadMetadata(mod)
+				
 				const sourceFile = $.fs.readFileSync(overridePaths[key][i]);
 				const sourceData = $.Helpers.parse(sourceFile, isPlugin);
 				
@@ -218,7 +227,8 @@ ModLoader.Holders = ModLoader.Holders || {};
 						continue;
 					}
 					
-					targetData = $.mergeData(reducedData, backupData, targetData);
+					const overrides = (metadata["overrides"] || {})[key];
+					targetData = $.mergeData(reducedData, backupData, targetData, overrides);
 					
 					if (!$.Helpers.strEq(sourceData, reducedData)) {
 						const reducedStr = JSON.stringify(reducedData);
@@ -255,13 +265,18 @@ ModLoader.Holders = ModLoader.Holders || {};
         }
     };
 
-    $.mergeData = function(source, original, target) {
+    $.mergeData = function(source, original, target, overrides = []) {
         const result = JSON.parse(JSON.stringify(target));
         if (Array.isArray(source) && Array.isArray(target)) {
             for (let i = 0; i < source.length; i++) {
                 if (source[i] == null) continue;
                 const oi = original ? original.findIndex(x => x && x["id"] === source[i]["id"]) : -1;
                 const ti = target ? target.findIndex(x => x && x["id"] === source[i]["id"]) : -1;
+				if (overrides.includes(source[i]["id"])) {
+					if (ti >= 0) result[ti] = source[i];
+					else result.push(source[i]);
+					continue;
+				}
                 if (oi >= 0 && ti >= 0) result[ti] = $.mergeData(source[i], original[oi], target[ti]);
                 else if (ti >= 0) result[ti] = $.mergeData(source[i], target[ti], target[ti]);
                 else result.push(source[i]);
