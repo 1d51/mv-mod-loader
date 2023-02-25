@@ -265,14 +265,15 @@ ModLoader.Holders = ModLoader.Holders || {};
         }
     };
 
-    $.mergeData = function(source, original, target, overrides = []) {
+    $.mergeData = function(source, original, target, overrides = null) {
+		if (typeof overrides == "boolean" && overrides) return source;
         const result = JSON.parse(JSON.stringify(target));
         if (Array.isArray(source) && Array.isArray(target)) {
             for (let i = 0; i < source.length; i++) {
                 if (source[i] == null) continue;
                 const oi = original ? original.findIndex(x => x && x["id"] === source[i]["id"]) : -1;
                 const ti = target ? target.findIndex(x => x && x["id"] === source[i]["id"]) : -1;
-				if (overrides.includes(source[i]["id"])) {
+				if (Array.isArray(overrides) && overrides.includes(source[i]["id"]) || overrides === source[i]["id"]) {
 					if (ti >= 0) result[ti] = source[i];
 					else result.push(source[i]);
 					continue;
@@ -284,7 +285,9 @@ ModLoader.Holders = ModLoader.Holders || {};
         } else {
             Object.keys(source).forEach(function(key) {
                 if (target && key in target) {
-                    if ($.Config.keyCombine.includes(key)) {
+					if (Array.isArray(overrides) && overrides.includes(key) || overrides === key) {
+						result[key] = source[key];
+					} else if ($.Config.keyCombine.includes(key)) {
                         const aux = result[key].concat(source[key]);
                         if (Array.isArray(source[key]))
                             result[key] = $.Helpers.dedup(aux);
