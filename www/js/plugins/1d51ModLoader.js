@@ -193,7 +193,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 			const files = $.Helpers.getFilesRecursively(modPath);
 			for (let j = 0; j < files.length; j++) {
 				const keyPath = $.Helpers.appendix(files[j]);
-				if (!keyPath.match(/(\.json)|(plugins[^\/]*\.js)/)) {
+				if (keyPath.match(/diffs/) || !keyPath.match(/(\.json)|(plugins[^\/]*\.js)/)) {
 					const originPath = $.Params.root + keyPath;
 					const sourceFile = $.fs.readFileSync(files[j]);
 					$.Helpers.deepWriteSync(originPath, sourceFile);
