@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 1.1.0
+ * @version 1.1.1
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -16,9 +16,12 @@ ModLoader.Holders = ModLoader.Holders || {};
 
 (function($) {
 	$.Config.pluginConfig = {"name":"1d51ModLoader","status":true,"description":"A simple mod loader for RPG Maker MV.","parameters":{}};
+	
 	$.Config.keyCombine = ["equips", "note", "traits", "learnings", "effects"];
     $.Config.keyMerge = ["events"];
     $.Config.keyXDiff = ["list"];
+	
+	$.Config.unlink = false;
 
     $.Helpers.strEq = function(left, right) {
 		return JSON.stringify(left) === JSON.stringify(right);
@@ -221,8 +224,9 @@ ModLoader.Holders = ModLoader.Holders || {};
 				const sourceData = $.Helpers.parse(sourceFile, isPlugin);
 				
 				if (key.split("/")[0].includes("data")) {
-					const reducedData = $.reduceData(sourceData, backupData);
-					if (reducedData == null) {
+					const reducedData = metadata["reduced"]
+						? sourceData : $.reduceData(sourceData, backupData);
+					if ($.Config.unlink && reducedData == null) {
 						$.fs.unlink(overridePaths[key][i]);
 						continue;
 					}
