@@ -224,11 +224,16 @@ ModLoader.Holders = ModLoader.Holders || {};
 				const sourceData = $.Helpers.parse(sourceFile, isPlugin);
 				
 				if (key.split("/")[0].includes("data")) {
-					const reducedData = metadata["reduced"]
-						? sourceData : $.reduceData(sourceData, backupData);
-					if ($.Config.unlink && reducedData == null) {
-						$.fs.unlink(overridePaths[key][i]);
-						continue;
+					let reducedData = metadata["reduced"] ? sourceData
+						: $.reduceData(sourceData, backupData);
+					
+					if (reducedData == null) {
+						if ($.Config.unlink) {
+							$.fs.unlink(overridePaths[key][i]);
+							continue;
+						} else {
+							reducedData = sourceData;
+						}
 					}
 					
 					const overrides = (metadata["overrides"] || {})[key];
