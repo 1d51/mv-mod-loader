@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 1.1.1
+ * @version 1.2.0
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -46,6 +46,12 @@ ModLoader.Holders = ModLoader.Holders || {};
             }
         }
         return a;
+    };
+	
+	$.Helpers.untag = function(str) {
+        const matches = str.match(/<[^<>]*>[^<>]+<\/[^<>]*>|<[^<>]*>/g) || [];
+		const unique = Array.from(new Set(matches.map(x => x.trim())));
+		return unique.join("\n");
     };
 
 	$.Helpers.move = function(array, index, delta) {
@@ -134,7 +140,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 		return JSON.parse(str);
     };
 
-	$.Helpers.arrdiff = function(source, original, target, append = null) {
+	$.Helpers.arrdiff = function(source, original, target) {
 		const sh = $.Helpers.hashCode(JSON.stringify(source))
 		const oh = $.Helpers.hashCode(JSON.stringify(original))
 		const th = $.Helpers.hashCode(JSON.stringify(target))
@@ -150,16 +156,21 @@ ModLoader.Holders = ModLoader.Holders || {};
 			const ss = source.map((obj) => JSON.stringify(obj));
 			const ts = target.map((obj) => JSON.stringify(obj));
 			diff = $.xdiff.diff3(ss, os, ts);
-
+			
 			if (diff == null) return original;
 			$.Helpers.deepWriteSync(path, JSON.stringify(diff));
 		}
 		
 		const rs = $.xdiff.patch(os, diff);
-		if (append && rs.indexOf(JSON.stringify(append)) === -1) rs.push(append);
 		return rs.map((str) => JSON.parse(str));
-		
 	};
+	
+	$.Helpers.append = function(target, input) {
+		const text = JSON.stringify(input);
+		const ts = target.map((obj) => JSON.stringify(obj));
+		if (text && ts.indexOf(text) === -1) ts.push(text);
+		return ts.map((str) => JSON.parse(str));
+	}
 
 	/************************************************************************************/
 
@@ -244,11 +255,15 @@ ModLoader.Holders = ModLoader.Holders || {};
 						$.Helpers.deepWriteSync(overridePaths[key][i], reducedStr);
 					}
 				} else if (isPlugin) {
-					const append = JSON.stringify($.Config.pluginConfig);
-					targetData = $.Helpers.arrdiff(sourceData, backupData, targetData, append);
+					const aux = targetData.concat(sourceData);
+					targetData = $.Helpers.dedup(aux);
 				} else {
 					targetData = JSON.parse(JSON.stringify(sourceData));
 				}
+			}
+			
+			if (isPlugin) {
+				targetData = $.Helpers.append(targetData, $.Config.pluginConfig);
 			}
 			
 			const path = $.Params.root + key;
@@ -298,9 +313,11 @@ ModLoader.Holders = ModLoader.Holders || {};
 						result[key] = source[key];
 					} else if ($.Config.keyCombine.includes(key)) {
                         const aux = result[key].concat(source[key]);
-                        if (Array.isArray(source[key]))
-                            result[key] = $.Helpers.dedup(aux);
-                        else result[key] = aux;
+						if (Array.isArray(source[key])) {
+							result[key] = $.Helpers.dedup(aux);
+						} else if (key === "note") {
+							result[key] = $.Helpers.untag(aux);
+						} else result[key] = aux;
                     } else if ($.Config.keyMerge.includes(key)) {
                         result[key] = $.mergeData(source[key], original[key], target[key]);
                     } else if ($.Config.keyXDiff.includes(key)) {
