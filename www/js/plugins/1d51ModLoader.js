@@ -255,15 +255,12 @@ ModLoader.Holders = ModLoader.Holders || {};
 						$.Helpers.deepWriteSync(overridePaths[key][i], reducedStr);
 					}
 				} else if (isPlugin) {
-					const aux = targetData.concat(sourceData);
+					let aux = targetData.concat(sourceData);
+					aux = $.Helpers.append(aux, $.Config.pluginConfig);
 					targetData = $.Helpers.dedup(aux);
 				} else {
 					targetData = JSON.parse(JSON.stringify(sourceData));
 				}
-			}
-			
-			if (isPlugin) {
-				targetData = $.Helpers.append(targetData, $.Config.pluginConfig);
 			}
 			
 			const path = $.Params.root + key;
