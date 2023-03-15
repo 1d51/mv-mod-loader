@@ -485,6 +485,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 			return {
 				"name": mod,
 				"version": "",
+				"reduced": false,
 				"dependencies": [],
 				"incompatible": [],
 				"overrides": []
