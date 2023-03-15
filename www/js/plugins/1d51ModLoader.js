@@ -394,12 +394,15 @@ ModLoader.Holders = ModLoader.Holders || {};
 		const schema = this.loadSchema();
 		
 		if (!value) {
+			const metadata = this.loadMetadata(symbol);
 			const keys = Object.keys(schema["enabled"]);
 			for (let i = 0; i < keys.length; i++) {
 				if (schema["enabled"][keys[i]]) {
-					const metadata = this.loadMetadata(keys[i]);
-					const names = metadata["dependencies"].map(d => d["name"]);
-					if (names.includes(symbol)) schema["enabled"][keys[i]] = false;
+					const aux = this.loadMetadata(keys[i]);
+					const names = aux["dependencies"].map(d => d["name"]);
+					if (names.includes(metadata["name"])) {
+						schema["enabled"][keys[i]] = false;
+					}
 				}
 			}
 		}
@@ -483,7 +486,8 @@ ModLoader.Holders = ModLoader.Holders || {};
 				"name": mod,
 				"version": "",
 				"dependencies": [],
-				"incompatible": []
+				"incompatible": [],
+				"overrides": []
 			};
 		}
 	};
