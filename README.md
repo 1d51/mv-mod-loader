@@ -6,7 +6,7 @@ For the game developer, adding this plugin to their game is done as they would w
 
 For a modder to add support to a game that does not come with this plugin pre-installed, they will have to distribute some extra, game-dependant files, such as `plugins.js`. It's also recommended that they package their mods along with the generated `diffs` folder, to reduce first-launch loading times.
 
-A user can install mods by adding them inside the `www/mods` folder, independently of whether those mods were designed with this plugin in mind or not. For example, if a modder distributes a mod in the form of a folder like `example/www/...`, installing said mod so that it's loaded through the plugin is as simple as drag and dropping the whole thing, so that it looks like `www/mods/example`.
+A user can install mods by adding them inside the `www/mods` folder, independently of whether those mods were designed with this plugin in mind or not. For example, if a modder distributes a mod in the form of a folder like `example/www/...`, installing said mod so that it's loaded through the plugin is as simple as drag and dropping the whole thing, so that it looks like `www/mods/example` inside of the game's folder.
 
 The plugin can handle working on top of an already modified game, but a clean install is always recommended. Once the plugin is installed, there should be no need to install mods the usual way, instead of how it's explained here.
 
