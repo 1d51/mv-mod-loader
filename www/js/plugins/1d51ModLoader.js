@@ -485,7 +485,6 @@ ModLoader.Holders = ModLoader.Holders || {};
 			return {
 				"name": mod,
 				"version": "",
-				"reduced": false,
 				"dependencies": [],
 				"incompatible": [],
 				"overrides": []
@@ -531,14 +530,60 @@ ModLoader.Holders = ModLoader.Holders || {};
 		
 		return true;
 	};
+	
+	$.loadConfig = function(mod) {
+		const configPath = $.Params.modsPath + mod + "/config.json";
+		if ($.fs.existsSync(configPath)) {
+			const configFile = $.fs.readFileSync(configPath);
+			return JSON.parse(configFile);
+		} else {
+			return {
+				"variables": [],
+				"switches": [],
+			};
+		}
+	};
+	
+	$.configGame = function() {
+		const modsPath = ModLoader.Params.modsPath;
+		const modFolders = $.Helpers.getFolders(modsPath);
+        const mods = ModLoader.sortMods(modFolders).filter(m => ModLoader.getEnabled(m));
+		for (let i = 0; i < mods.length; i++) {
+			const config = ModLoader.loadConfig(mods[i]);
+			const switches = config["switches"] || [];
+			const variables = config["variables"] || [];
+			for (let j = 0; j < switches.length; j++) {
+				const id = switches[j]["id"];
+				const value = switches[j]["value"];
+				$gameSwitches.setValue(id, value);
+			}
+			for (let j = 0; j < variables.length; j++) {
+				const id = variables[j]["id"];
+				const value = variables[j]["value"];
+				$gameVariables.setValue(id, value);
+			}
+		}
+	};
 
 	/************************************************************************************/
+	
+	$.Holders.commandNewGame = Scene_Title.prototype.commandNewGame;
+	Scene_Title.prototype.commandNewGame = function() {
+		$.Holders.commandNewGame.call(this);
+		$.configGame();
+	};
+	
+	$.Holders.onLoadSuccess = Scene_Load.prototype.onLoadSuccess;
+	Scene_Load.prototype.onLoadSuccess = function() {
+		$.Holders.onLoadSuccess.call(this);
+		$.configGame();
+	};
 
 	$.Holders.makeCommandList = Window_TitleCommand.prototype.makeCommandList;
 	Window_TitleCommand.prototype.makeCommandList = function() {
 		$.Holders.makeCommandList.call(this);
-		const modsPath = ModLoader.Params.modsPath;
-		const modFolders = ModLoader.Helpers.getFolders(modsPath);
+		const modsPath = $.Params.modsPath;
+		const modFolders = $.Helpers.getFolders(modsPath);
 		this.addCommand("Mods", 'mods', modFolders.length > 0);
 	};
 
