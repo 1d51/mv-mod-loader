@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 1.2.0
+ * @version 1.3.0
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -386,8 +386,8 @@ ModLoader.Holders = ModLoader.Holders || {};
 	};
 
 	$.getEnabled = function(symbol) {
-		const enabled = this.loadSchema()["enabled"];
-		return enabled[symbol] || false;
+		const schema = this.loadSchema();
+		return schema["enabled"].includes(symbol);
 	};
 
 	$.setEnabled = function(symbol, value) {
@@ -395,19 +395,25 @@ ModLoader.Holders = ModLoader.Holders || {};
 		
 		if (!value) {
 			const metadata = this.loadMetadata(symbol);
-			const keys = Object.keys(schema["enabled"]);
-			for (let i = 0; i < keys.length; i++) {
-				if (schema["enabled"][keys[i]]) {
-					const aux = this.loadMetadata(keys[i]);
-					const names = aux["dependencies"].map(d => d["name"]);
-					if (names.includes(metadata["name"])) {
-						schema["enabled"][keys[i]] = false;
+			for (let i = 0; i < schema["enabled"].length; i++) {
+				const aux = this.loadMetadata(schema["enabled"][i]);
+				const names = aux["dependencies"].map(d => d["name"]);
+				if (names.includes(metadata["name"])) {
+					if (schema["enabled"].includes(schema["enabled"][i])) {
+						const index = schema["enabled"].indexOf(schema["enabled"][i]);
+						schema["enabled"].splice(index, 1);
 					}
 				}
 			}
 		}
 		
-		schema["enabled"][symbol] = value;
+		if (value && !schema["enabled"].includes(symbol)) {
+			schema["enabled"].push(symbol);
+		} else if (!value && schema["enabled"].includes(symbol)) {
+			const index = schema["enabled"].indexOf(symbol);
+			schema["enabled"].splice(index, 1);
+		}
+		
 		this.writeSchema(schema);
 	};
 
@@ -539,8 +545,8 @@ ModLoader.Holders = ModLoader.Holders || {};
 			return JSON.parse(configFile);
 		} else {
 			return {
-				"variables": [],
 				"switches": [],
+				"variables": []
 			};
 		}
 	};
@@ -567,13 +573,13 @@ ModLoader.Holders = ModLoader.Holders || {};
 	};
 
 	/************************************************************************************/
-	
+
 	$.Holders.commandNewGame = Scene_Title.prototype.commandNewGame;
 	Scene_Title.prototype.commandNewGame = function() {
 		$.Holders.commandNewGame.call(this);
 		$.configGame();
 	};
-	
+
 	$.Holders.onLoadSuccess = Scene_Load.prototype.onLoadSuccess;
 	Scene_Load.prototype.onLoadSuccess = function() {
 		$.Holders.onLoadSuccess.call(this);
@@ -598,6 +604,27 @@ ModLoader.Holders = ModLoader.Holders || {};
 		this._commandWindow.close();
 		SceneManager.push(Scene_Mods);
 	};
+
+	$.Holders.makeSaveContents = DataManager.makeSaveContents;
+	DataManager.makeSaveContents = function() {
+	   let contents = $.Holders.makeSaveContents.call(this);
+	   contents.saveMods = $.loadSchema()["enabled"];
+	   return contents;
+	};
+
+	if (Yanfly.Save != null) {
+		$.Holders.onActionLoad = Scene_File.prototype.onActionLoad;
+		Scene_File.prototype.onActionLoad = function() {
+			const enabled = $.loadSchema()["enabled"].sort();
+			const raw = StorageManager.load(this.savefileId());
+			const saveMods = JsonEx.parse(raw).saveMods.sort();
+			if (!$.Helpers.strEq(enabled, saveMods)) {
+			  this.startConfirmWindow("Detected a different set of mods, load anyways?");
+			} else {
+			  $.Holders.onActionLoad.call(this);
+			}
+		};
+	}
 
 	$.readMods();
 
