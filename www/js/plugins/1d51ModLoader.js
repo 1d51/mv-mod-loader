@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 1.3.4
+ * @version 1.3.5
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -199,7 +199,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 			$.Helpers.deepWriteSync(originPath, backupFile);
 		}
 
-		const overridePaths = {};
+		const filePaths = {};
         for (let i = 0; i < mods.length; i++) {
             const modPath = $.Params.modsPath + mods[i] + "/www";
 			const files = $.Helpers.getFilesRecursively(modPath);
@@ -214,24 +214,24 @@ ModLoader.Holders = ModLoader.Holders || {};
 					continue;
 				}
 
-				if (!overridePaths[keyPath])
-					overridePaths[keyPath] = [];
-				overridePaths[keyPath].push(files[j]);
+				if (!filePaths[keyPath])
+					filePaths[keyPath] = [];
+				filePaths[keyPath].push(files[j]);
 			}
 		}
 		
-		Object.keys(overridePaths).forEach(function(key) {
+		Object.keys(filePaths).forEach(function(key) {
 			const isPlugin = key.match(/plugins[^\/]*\.js/);
 			const backupPath = $.Params.backupsPath + key;
 			const backupFile = $.fs.readFileSync(backupPath);
 			const backupData = $.Helpers.parse(backupFile, isPlugin);
 			
 			let targetData = $.Helpers.parse(backupFile, isPlugin);
-			for (let i = 0; i < overridePaths[key].length; i++) {
-				const mod = $.Helpers.modName(overridePaths[key][i]);
+			for (let i = 0; i < filePaths[key].length; i++) {
+				const mod = $.Helpers.modName(filePaths[key][i]);
 				const metadata = $.loadMetadata(mod)
 				
-				const sourceFile = $.fs.readFileSync(overridePaths[key][i]);
+				const sourceFile = $.fs.readFileSync(filePaths[key][i]);
 				const sourceData = $.Helpers.parse(sourceFile, isPlugin);
 				
 				if (key.split("/")[0].includes("data")) {
@@ -240,7 +240,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 					
 					if (reducedData == null) {
 						if ($.Config.unlink) {
-							$.fs.unlink(overridePaths[key][i]);
+							$.fs.unlink(filePaths[key][i]);
 							continue;
 						} else {
 							reducedData = sourceData;
@@ -252,7 +252,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 					
 					if (!$.Helpers.strEq(sourceData, reducedData)) {
 						const reducedStr = JSON.stringify(reducedData);
-						$.Helpers.deepWriteSync(overridePaths[key][i], reducedStr);
+						$.Helpers.deepWriteSync(filePaths[key][i], reducedStr);
 					}
 				} else if (isPlugin) {
 					let aux = targetData.concat(sourceData);
