@@ -375,7 +375,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 			return JSON.parse(schemaFile);
 		} else {
 			return {
-				"enabled": {},
+				"enabled": [],
 				"order": [],
 				"last": []
 			};
