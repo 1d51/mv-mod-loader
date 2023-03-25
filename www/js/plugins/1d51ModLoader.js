@@ -200,20 +200,22 @@ ModLoader.Holders = ModLoader.Holders || {};
                 $.Helpers.deepWriteSync(originPath, backupFile);
 			} return;
 		}
-		
+
 		const overridePaths = {};
         for (let i = 0; i < mods.length; i++) {
             const modPath = $.Params.modsPath + mods[i] + "/www";
 			const files = $.Helpers.getFilesRecursively(modPath);
 			for (let j = 0; j < files.length; j++) {
 				const keyPath = $.Helpers.appendix(files[j]);
+				$.backup(files[j]);
+
 				if (keyPath.match(/diffs/) || !keyPath.match(/(\.json)|(plugins[^\/]*\.js)/)) {
 					const originPath = $.Params.root + keyPath;
 					const sourceFile = $.fs.readFileSync(files[j]);
 					$.Helpers.deepWriteSync(originPath, sourceFile);
 					continue;
 				}
-				$.backup(files[j]);
+
 				if (!overridePaths[keyPath])
 					overridePaths[keyPath] = [];
 				overridePaths[keyPath].push(files[j]);
