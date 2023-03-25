@@ -190,15 +190,13 @@ ModLoader.Holders = ModLoader.Holders || {};
         const mods = $.sortMods(modFolders).filter(m => $.getEnabled(m));
 		if (this.checkLast(mods)) return;
 		
-		if (mods.length === 0) {
-			const files = $.Helpers.getFilesRecursively($.Params.backupsPath);
-			for (let i = 0; i < files.length; i++) {
-				const index = files[i].indexOf('/backups');
-				const keyPath = files[i].substr(index + 10);
-				const originPath = $.Params.root + keyPath;
-				const backupFile = $.fs.readFileSync(files[i]);
-                $.Helpers.deepWriteSync(originPath, backupFile);
-			} return;
+		const files = $.Helpers.getFilesRecursively($.Params.backupsPath);
+		for (let i = 0; i < files.length; i++) {
+			const index = files[i].indexOf('/backups');
+			const keyPath = files[i].substr(index + 10);
+			const originPath = $.Params.root + keyPath;
+			const backupFile = $.fs.readFileSync(files[i]);
+			$.Helpers.deepWriteSync(originPath, backupFile);
 		}
 
 		const overridePaths = {};
