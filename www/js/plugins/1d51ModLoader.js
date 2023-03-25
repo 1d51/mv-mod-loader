@@ -507,7 +507,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 		const metadata = this.loadMetadata(mod);
 		for (let i = 0; i < meta.length; i++) {
 			const incompatible = meta[i]["incompatible"] || [];
-			for (let j = 0; j < incompatible; j++) {
+			for (let j = 0; j < incompatible.length; j++) {
 				if (metadata["name"] === incompatible[j]["name"]) {
 					if (!metadata["version"] || !incompatible[j]["version"]) return false;
 					if (metadata["version"] === incompatible[j]["version"]) return false;
@@ -646,7 +646,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 		Scene_File.prototype.onActionLoad = function() {
 			const enabled = $.loadSchema()["enabled"].sort();
 			const raw = StorageManager.load(this.savefileId());
-			const saveMods = JsonEx.parse(raw).saveMods.sort();
+			const saveMods = (JsonEx.parse(raw).saveMods || []).sort();
 			if (!$.Helpers.strEq(enabled, saveMods)) {
 				const added = enabled.filter(x => !saveMods.includes(x)).map(m => '\\C[3]+ ' + $.loadMetadata(m).name);
 				const removed = saveMods.filter(x => !enabled.includes(x)).map(m => '\\C[10]- ' + $.loadMetadata(m).name);
