@@ -18,7 +18,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 	$.Config.pluginConfig = {"name":"1d51ModLoader","status":true,"description":"A simple mod loader for RPG Maker MV.","parameters":{}};
 	
 	$.Config.keyCombine = ["equips", "note", "traits", "learnings", "effects"];
-    $.Config.keyMerge = ["events"];
+    $.Config.keyMerge = ["pages", "events"];
     $.Config.keyXDiff = ["list"];
 	
 	$.Config.unlink = false;
@@ -292,6 +292,12 @@ ModLoader.Holders = ModLoader.Holders || {};
         if (Array.isArray(source) && Array.isArray(target)) {
             for (let i = 0; i < source.length; i++) {
                 if (source[i] == null) continue;
+				if (source[i]["id"] == null) {
+					if (original.length > i && target.length > i) result[i] = $.mergeData(source[i], original[i], target[i]);
+					else if (target.length > i) result[i] = $.mergeData(source[i], target[i], target[i]);
+					else result.push(source[i]);
+					continue;
+				}
                 const oi = original ? original.findIndex(x => x && x["id"] === source[i]["id"]) : -1;
                 const ti = target ? target.findIndex(x => x && x["id"] === source[i]["id"]) : -1;
 				if (Array.isArray(overrides) && overrides.includes(source[i]["id"]) || overrides === source[i]["id"]) {
