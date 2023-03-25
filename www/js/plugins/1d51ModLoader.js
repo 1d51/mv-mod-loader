@@ -650,8 +650,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 			if (!$.Helpers.strEq(enabled, saveMods)) {
 				const added = enabled.filter(x => !saveMods.includes(x)).map(m => '\\C[3]+ ' + $.loadMetadata(m).name);
 				const removed = saveMods.filter(x => !enabled.includes(x)).map(m => '\\C[10]- ' + $.loadMetadata(m).name);
-				const lines = added.length + removed.length + 2;
-				this.createModConfirmWindow(lines);
+				this.createModConfirmWindow(added.length + removed.length);
 				this.startModConfirmWindow(added, removed);
 			} else {
 			  $.Holders.onActionLoad.call(this);
@@ -814,11 +813,11 @@ Window_ModConfirm.prototype = Object.create(Window_Command.prototype);
 Window_ModConfirm.prototype.constructor = Window_ModConfirm;
 
 Window_ModConfirm.prototype.firstLine = 'The save was created with mods different than enabled.\n';
-Window_ModConfirm.prototype.secondLine = 'This can cause issues with your game, load anyways?\n';
-Window_ModConfirm.prototype.lines = 2;
+Window_ModConfirm.prototype.secondLine = 'This can cause issues with your game, load anyways?\n\n';
+Window_ModConfirm.prototype.lines;
 
-Window_ModConfirm.prototype.initialize = function(lines) {
-	this.lines = lines;
+Window_ModConfirm.prototype.initialize = function(count) {
+	this.lines = count + 4;
     Window_Command.prototype.initialize.call(this, 0, 0);
     this.openness = 0;
 };
@@ -858,6 +857,7 @@ Window_ModConfirm.prototype.setData = function(added, removed) {
 	if (removed.length > 0) {
 		text += removed.join('\n');
 	}
+	text += '\n';
 	
 	this.drawTextEx(text, this.textPadding(), 0);
 }
