@@ -613,13 +613,46 @@ ModLoader.Holders = ModLoader.Holders || {};
 	};
 
 	if (Yanfly.Save != null) {
+		Scene_File.prototype.createModConfirmWindow = function(lines) {
+			this._modConfirmWindow = new Window_ModConfirm(lines);
+			this._modConfirmWindow.setHandler('confirm', this.onModConfirmOk.bind(this));
+			this._modConfirmWindow.setHandler('cancel',  this.onModConfirmCancel.bind(this));
+			this.addWindow(this._modConfirmWindow);
+		};
+
+		Scene_File.prototype.onModConfirmOk = function() {
+			this._modConfirmWindow.deactivate();
+			this._modConfirmWindow.close();
+			setTimeout(this.performActionLoad.bind(this), 200);
+		};
+
+		Scene_File.prototype.onModConfirmCancel = function() {
+			var index = this._actionWindow.index();
+			this._modConfirmWindow.deactivate();
+			this._modConfirmWindow.close();
+			this.onSavefileOk();
+			this._actionWindow.select(index);
+		};
+
+		Scene_File.prototype.startModConfirmWindow = function(added, removed) {
+			SoundManager.playOk();
+			this._modConfirmWindow.setData(added, removed);
+			this._modConfirmWindow.open();
+			this._modConfirmWindow.activate();
+			this._modConfirmWindow.select(0);
+		};
+
 		$.Holders.onActionLoad = Scene_File.prototype.onActionLoad;
 		Scene_File.prototype.onActionLoad = function() {
 			const enabled = $.loadSchema()["enabled"].sort();
 			const raw = StorageManager.load(this.savefileId());
 			const saveMods = JsonEx.parse(raw).saveMods.sort();
 			if (!$.Helpers.strEq(enabled, saveMods)) {
-			  this.startConfirmWindow("Detected a different set of mods, load anyways?");
+				const added = enabled.filter(x => !saveMods.includes(x)).map(m => '\\C[3]+ ' + $.loadMetadata(m).name);
+				const removed = saveMods.filter(x => !enabled.includes(x)).map(m => '\\C[10]- ' + $.loadMetadata(m).name);
+				const lines = added.length + removed.length + 1;
+				this.createModConfirmWindow(lines);
+				this.startModConfirmWindow(added, removed);
 			} else {
 			  $.Holders.onActionLoad.call(this);
 			}
@@ -769,4 +802,72 @@ Window_Mods.prototype.changeValue = function(symbol, value) {
 	} 
 	ModLoader.Params.reboot = true;
 	this.refresh();
+};
+
+/************************************************************************************/
+
+function Window_ModConfirm() {
+    this.initialize.apply(this, arguments);
+}
+
+Window_ModConfirm.prototype = Object.create(Window_Command.prototype);
+Window_ModConfirm.prototype.constructor = Window_ModConfirm;
+
+Window_ModConfirm.prototype.query = 'Detected a different set of mods, load anyways?\n';
+Window_ModConfirm.prototype.lines = 1;
+
+Window_ModConfirm.prototype.initialize = function(lines) {
+	this.lines = lines;
+    Window_Command.prototype.initialize.call(this, 0, 0);
+    this.openness = 0;
+};
+
+Window_ModConfirm.prototype.makeCommandList = function() {
+    this.addCommand('Yes', 'confirm');
+    this.addCommand('No', 'cancel');
+};
+
+Window_ModConfirm.prototype.setData = function(added, removed) {
+    let width = this.textWidth(this.query);
+	for (let i = 0; i < added.length; i++) {
+		const ww = this.textWidth(added[i]);
+		if (width < ww) width = ww;
+	}
+	for (let i = 0; i < removed.length; i++) {
+		const ww = this.textWidth(added[i]);
+		if (width < ww) width = ww;
+	}
+	
+    this.width = width + this.standardPadding() * 2 + this.textPadding() * 2;
+    this.refresh();
+	
+    this.x = (Graphics.boxWidth - this.width) / 2;
+    this.y = (Graphics.boxHeight - this.height) / 2;
+	
+	let text = this.query;
+	if (added.length > 0) {
+		text += added.join('\n');
+		if (removed.length > 0) {
+			text += '\n';
+		}
+	}
+	if (removed.length > 0) {
+		text += removed.join('\n');
+	}
+	
+	this.drawTextEx(text, this.textPadding(), 0);
+}
+
+Window_ModConfirm.prototype.itemTextAlign = function() {
+    return 'center';
+};
+
+Window_ModConfirm.prototype.windowHeight = function() {
+    return this.fittingHeight(2 + this.lines);
+};
+
+Window_ModConfirm.prototype.itemRect = function(index) {
+    var rect = Window_Selectable.prototype.itemRect.call(this, index);
+    rect.y += this.lineHeight() * this.lines;
+    return rect;
 };
