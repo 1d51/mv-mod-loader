@@ -650,7 +650,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 			if (!$.Helpers.strEq(enabled, saveMods)) {
 				const added = enabled.filter(x => !saveMods.includes(x)).map(m => '\\C[3]+ ' + $.loadMetadata(m).name);
 				const removed = saveMods.filter(x => !enabled.includes(x)).map(m => '\\C[10]- ' + $.loadMetadata(m).name);
-				const lines = added.length + removed.length + 1;
+				const lines = added.length + removed.length + 2;
 				this.createModConfirmWindow(lines);
 				this.startModConfirmWindow(added, removed);
 			} else {
@@ -813,8 +813,9 @@ function Window_ModConfirm() {
 Window_ModConfirm.prototype = Object.create(Window_Command.prototype);
 Window_ModConfirm.prototype.constructor = Window_ModConfirm;
 
-Window_ModConfirm.prototype.query = 'Detected a different set of mods, load anyways?\n';
-Window_ModConfirm.prototype.lines = 1;
+Window_ModConfirm.prototype.firstLine = 'The save was created with mods different than enabled.\n';
+Window_ModConfirm.prototype.secondLine = 'This can cause issues with your game, load anyways?\n';
+Window_ModConfirm.prototype.lines = 2;
 
 Window_ModConfirm.prototype.initialize = function(lines) {
 	this.lines = lines;
@@ -828,7 +829,9 @@ Window_ModConfirm.prototype.makeCommandList = function() {
 };
 
 Window_ModConfirm.prototype.setData = function(added, removed) {
-    let width = this.textWidth(this.query);
+    let width = Math.max(this.textWidth(this.firstLine),
+						 this.textWidth(this.secondLine));
+
 	for (let i = 0; i < added.length; i++) {
 		const ww = this.textWidth(added[i]);
 		if (width < ww) width = ww;
@@ -844,7 +847,8 @@ Window_ModConfirm.prototype.setData = function(added, removed) {
     this.x = (Graphics.boxWidth - this.width) / 2;
     this.y = (Graphics.boxHeight - this.height) / 2;
 	
-	let text = this.query;
+	let text = this.firstLine + this.secondLine;
+
 	if (added.length > 0) {
 		text += added.join('\n');
 		if (removed.length > 0) {
