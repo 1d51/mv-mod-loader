@@ -1,301 +1,366 @@
-function head (a) {
-    return a[0]
+function last(arr) {
+    return arr[arr.length - 1];
 }
 
-function last (a) {
-    return a[a.length - 1]
-}
-
-function tail(a) {
-    return a.slice(1)
-}
-
-function retreat (e) {
-    return e.pop()
-}
-
-function hasLength (e) {
-    return e.length
+function hasLength(elem) {
+    return elem.length;
 }
 
 function any(ary, test) {
-    for(var i=0;i<ary.length;i++)
-        if(test(ary[i]))
-            return true
-    return false
+    for (let i = 0; i < ary.length; i++) {
+        if (test(ary[i])) {
+            return true;
+        }
+    }
+    return false;
 }
 
-function score (a) {
-    return a.reduce(function (s, a) {
-        return s + a.length + a[1] + 1
-    }, 0)
+function score(arr) {
+    return arr.reduce(function (sum, elem) {
+        return sum + elem.length + elem[1] + 1;
+    }, 0);
 }
 
-function best (a, b) {
-    return score(a) <= score(b) ? a : b
+function best(a, b) {
+    return score(a) <= score(b) ? a : b;
 }
-
-
-var _rules // set at the bottom
-
-// note, naive implementation. will break on circular objects.
 
 function _equal(a, b) {
-    if(a && !b) return false
-    if(Array.isArray(a))
-        if(a.length != b.length) return false
-    if(a && 'object' == typeof a) {
-        for(var i in a)
-            if(!_equal(a[i], b[i])) return false
-        for(var i in b)
-            if(!_equal(a[i], b[i])) return false
-        return true
+    if (a && !b) return false;
+    if (Array.isArray(a)) if (a.length !== b.length) return false;
+    if (a && 'object' == typeof a) {
+        for (let i in a) if (!_equal(a[i], b[i])) return false;
+        for (let i in b) if (!_equal(a[i], b[i])) return false;
+        return true;
     }
-    return a == b
+    return a === b;
 }
 
 function getArgs(args) {
-    return args.length == 1 ? args[0] : [].slice.call(args)
+    return args.length === 1 ? args[0] : Array.prototype.slice.call(args);
 }
 
-// return the index of the element not like the others, or -1
 function oddElement(ary, cmp) {
-    var c
+    let c;
+
     function guess(a) {
-        var odd = -1
-        c = 0
-        for (var i = a; i < ary.length; i ++) {
-            if(!cmp(ary[a], ary[i])) {
-                odd = i, c++
+        let odd = -1;
+        c = 0;
+        let skip = Array(ary.length).fill(0);
+        let last = {};
+        for (let i = a; i < ary.length; i++) {
+            if (last[ary[i]] !== undefined) {
+                skip[last[ary[i]]] = i - last[ary[i]];
+            }
+            last[ary[i]] = i;
+        }
+        let j = 0;
+        while (a + j < ary.length) {
+            if (j === odd) {
+                return -1;
+            }
+            if (!cmp(ary[a], ary[a + j])) {
+                odd = a + j;
+                j += skip[a + j] || 1;
+                c++;
+            } else {
+                j++;
             }
         }
-        return c > 1 ? -1 : odd
+        return c > 1 ? -1 : odd;
     }
-    //assume that it is the first element.
-    var g = guess(0)
-    if(-1 != g) return g
-    //0 was the odd one, then all the other elements are equal
-    //else there more than one different element
-    guess(1)
-    return c == 0 ? 0 : -1
+
+    let g = guess(0);
+    if (g !== -1) {
+        return g;
+    }
+    guess(1);
+    return c === 0 ? 0 : -1;
 }
+
 var exports = module.exports = function (deps, exports) {
-    var equal = (deps && deps.equal) || _equal
-    exports = exports || {}
-    exports.lcs =
-        function lcs() {
-            var cache = {}
-            var args = getArgs(arguments)
-            var a = args[0], b = args[1]
+    let equal = (deps && deps.equal) || _equal;
+    exports = exports || {};
 
-            function key (a,b){
-                return a.length + ':' + b.length
+    exports.lcs = function () {
+        let args = getArgs(arguments);
+        while (args.length > 2) {
+            let pairs = [];
+            for (let i = 0; i < args.length; i += 2) {
+                let a = args[i];
+                let b = i + 1 < args.length ? args[i + 1] : [];
+                pairs.push(exports.lcs(a, b));
             }
+            args = pairs;
+        }
+        let a = args[0], b = args[1];
+        let m = a.length, n = b.length;
+        let dp = Array.from(Array(m + 1), () => Array(n + 1).fill(0));
 
-            //find length that matches at the head
-
-            if(args.length > 2) {
-                //if called with multiple sequences
-                //recurse, since lcs(a, b, c, d) == lcs(lcs(a,b), lcs(c,d))
-                args.push(lcs(args.shift(), args.shift()))
-                return lcs(args)
-            }
-
-            //this would be improved by truncating input first
-            //and not returning an lcs as an intermediate step.
-            //untill that is a performance problem.
-
-            var start = 0, end = 0
-            for(var i = 0; i < a.length && i < b.length
-            && equal(a[i], b[i])
-                ; i ++
-            )
-                start = i + 1
-
-            if(a.length === start)
-                return a.slice()
-
-            for(var i = 0;  i < a.length - start && i < b.length - start
-            && equal(a[a.length - 1 - i], b[b.length - 1 - i])
-                ; i ++
-            )
-                end = i
-
-            function recurse (a, b) {
-                if(!a.length || !b.length) return []
-                //avoid exponential time by caching the results
-                if(cache[key(a, b)]) return cache[key(a, b)]
-
-                if(equal(a[0], b[0]))
-                    return [head(a)].concat(recurse(tail(a), tail(b)))
-                else {
-                    var _a = recurse(tail(a), b)
-                    var _b = recurse(a, tail(b))
-                    return cache[key(a,b)] = _a.length > _b.length ? _a : _b
+        for (let i = 1; i <= m; i++) {
+            for (let j = 1; j <= n; j++) {
+                if (a[i - 1] === b[j - 1]) {
+                    dp[i][j] = dp[i - 1][j - 1] + 1;
+                } else {
+                    dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
                 }
             }
-
-            var middleA = a.slice(start, a.length - end)
-            var middleB = b.slice(start, b.length - end)
-
-            return (
-                a.slice(0, start).concat(
-                    recurse(middleA, middleB)
-                ).concat(a.slice(a.length - end))
-            )
         }
 
-    // given n sequences, calc the lcs, and then chunk strings into stable and unstable sections.
-    // unstable chunks are passed to build
-    exports.chunk =
-        function (q, build) {
-            var q = q.map(function (e) { return e.slice() })
-            var lcs = exports.lcs.apply(null, q)
-            var all = [lcs].concat(q)
-
-            function matchLcs (e) {
-                if(e.length && !lcs.length || !e.length && lcs.length)
-                    return false //incase the last item is null
-                return equal(last(e), last(lcs)) || ((e.length + lcs.length) === 0)
-            }
-
-            while(any(q, hasLength)) {
-                //if each element is at the lcs then this chunk is stable.
-                while(q.every(matchLcs) && q.every(hasLength))
-                    all.forEach(retreat)
-                //collect the changes in each array upto the next match with the lcs
-                var c = false
-                var unstable = q.map(function (e) {
-                    var change = []
-                    while(!matchLcs(e)) {
-                        change.unshift(retreat(e))
-                        c = true
-                    }
-                    return change
-                })
-                if(c) build(q[0].length, unstable)
+        let seq = [];
+        let i = m, j = n;
+        while (i > 0 && j > 0) {
+            if (a[i - 1] === b[j - 1]) {
+                seq.unshift(a[i - 1]);
+                i--;
+                j--;
+            } else if (dp[i - 1][j] > dp[i][j - 1]) {
+                i--;
+            } else {
+                j--;
             }
         }
 
-    //calculate a diff this is only updates
-    exports.optimisticDiff =
-        function (a, b) {
-            var M = Math.max(a.length, b.length)
-            var m = Math.min(a.length, b.length)
-            var patch = []
-            for(var i = 0; i < M; i++)
-                if(a[i] !== b[i]) {
-                    var cur = [i,0], deletes = 0
-                    while(a[i] !== b[i] && i < m) {
-                        cur[1] = ++deletes
-                        cur.push(b[i++])
-                    }
-                    //the rest are deletes or inserts
-                    if(i >= m) {
-                        //the rest are deletes
-                        if(a.length > b.length)
-                            cur[1] += a.length - b.length
-                        //the rest are inserts
-                        else if(a.length < b.length)
-                            cur = cur.concat(b.slice(a.length))
-                    }
-                    patch.push(cur)
+        return seq;
+    }
+
+    exports.chunk = function (q, build) {
+        var q = q.map(function (elem) {
+            return elem.slice();
+        });
+        let lcs = exports.lcs.apply(null, q);
+        let all = [lcs].concat(q);
+
+        function matchLcs(elem) {
+            if ((elem.length && !lcs.length) || (!elem.length && lcs.length)) {
+                return false;
+            }
+            return equal(last(elem), last(lcs)) || elem.length + lcs.length === 0;
+        }
+
+        while (any(q, hasLength)) {
+            while (q.every(matchLcs) && q.every(hasLength)) {
+                all.forEach(function (elem) {
+                    elem.pop();
+                });
+            }
+            let changes = false;
+            let unstable = q.map(function (elem) {
+                let change = [];
+                while (!matchLcs(elem)) {
+                    change.unshift(elem.pop());
+                    changes = true;
                 }
-
-            return patch
+                return change;
+            });
+            if (changes) build(q[0].length, unstable);
         }
+    };
 
-    exports.diff =
-        function (a, b) {
-            var optimistic = exports.optimisticDiff(a, b)
-            var changes = []
-            exports.chunk([a, b], function (index, unstable) {
-                var del = unstable.shift().length
-                var insert = unstable.shift()
-                changes.push([index, del].concat(insert))
-            })
-            return best(optimistic, changes)
+    exports.optimisticDiff = function (a, b) {
+        let M = Math.max(a.length, b.length);
+        let m = Math.min(a.length, b.length);
+        let patch = [];
+        for (let i = 0; i < M; i++) {
+            if (a[i] !== b[i]) {
+                let cur = [i, 0], deletes = 0;
+                while (a[i] !== b[i] && i < m) {
+                    cur[1] = ++deletes;
+                    cur.push(b[i++]);
+                }
+                if (i >= m) {
+                    if (a.length > b.length) cur[1] += a.length - b.length; else if (a.length < b.length) cur.push(...b.slice(a.length));
+                }
+                patch.push(cur);
+            }
         }
+        return patch;
+    };
+
+    exports.diff = function (a, b) {
+        let optimistic = exports.optimisticDiff(a, b);
+        let changes = [];
+        exports.chunk([a, b], function (index, unstable) {
+            let del = unstable.shift().length;
+            let insert = unstable.shift();
+            changes.push([index, del, ...insert]);
+        });
+        return best(optimistic, changes);
+    };
 
     exports.patch = function (a, changes, mutate) {
-        if(mutate !== true) a = a.slice(a)//copy a
+        if (!mutate) a = a.slice();
         changes.forEach(function (change) {
-            [].splice.apply(a, change)
-        })
-        return a
-    }
+            a.splice(change[0], change[1], ...change.slice(2));
+        });
+        return a;
+    };
 
-    // http://en.wikipedia.org/wiki/Concestor
-    // me, concestor, you...
     exports.merge = function () {
-        var args = getArgs(arguments)
-        var patch = exports.diff3(args)
-        return exports.patch(args[0], patch)
-    }
+        let args = getArgs(arguments);
+        let patch = exports.diff3(args);
+        return exports.patch(args[0], patch);
+    };
 
     exports.diff3 = function () {
-        var args = getArgs(arguments)
-        var r = []
+        const args = getArgs(arguments);
+        const r = [];
         exports.chunk(args, function (index, unstable) {
-            var mine = unstable[0]
-            var insert = resolve(unstable)
-            if(equal(mine, insert)) return
-            r.push([index, mine.length].concat(insert))
+            const mine = unstable[0];
+            const insert = resolve(unstable);
+            if (equal(mine, insert)) return;
+            r.push([index, mine.length].concat(insert));
         })
-        return r
+        return r;
     }
-    exports.oddOneOut =
-        function oddOneOut (changes) {
-            changes = changes.slice()
-            //put the concestor first
-            changes.unshift(changes.splice(1,1)[0])
-            var i = oddElement(changes, equal)
-            if(i == 0) // concestor was different, 'false conflict'
-                return changes[1]
-            if (~i)
-                return changes[i]
+
+    exports.oddOneOut = function (changes) {
+        if (allDifferent(changes)) {
+            return null;
         }
-    exports.insertMergeOverDelete =
-        //i've implemented this as a seperate rule,
-        //because I had second thoughts about this.
-        function insertMergeOverDelete (changes) {
-            changes = changes.slice()
-            changes.splice(1,1)// remove concestor
+        changes = changes.slice();
+        changes.unshift(changes.splice(1, 1)[0]);
+        let i = oddElement(changes, equal);
+        if (i === 0) return changes[1]
+        if (~i) return changes[i];
+    };
 
-            //if there is only one non empty change thats okay.
-            //else full confilct
-            for (var i = 0, nonempty; i < changes.length; i++)
-                if(changes[i].length)
-                    if(!nonempty) nonempty = changes[i]
-                    else return // full conflict
-            return nonempty
+    exports.insertMergeOverDelete = function (changes) {
+        changes = changes.slice();
+        changes.splice(1, 1);
+
+        const nonemptyChanges = changes.filter((change) => change.length > 0);
+        if (nonemptyChanges.length === 1) {
+            return nonemptyChanges[0];
+        }
+    };
+
+    exports.threeWayMerge = function (changes, resolve) {
+        const mine = changes[0];
+        const original = changes[1];
+        const yours = changes[2];
+
+        if (resolve == null || typeof resolve !== 'function') {
+            resolve = (a, o, b) => a;
         }
 
-    var rules = (deps && deps.rules) || [exports.oddOneOut, exports.insertMergeOverDelete]
+        const lcsMine = exports.lcs(original, mine);
+        const lcsYours = exports.lcs(original, yours);
 
-    function resolve (changes) {
-        var l = rules.length
-        for (var i in rules) { // first
+        let result = [];
+        let mineIndex = 0;
+        let yoursIndex = 0;
+        let lcsMineIndex = 0;
+        let lcsYoursIndex = 0;
+        let lastCommonItem = null;
 
-            var c = rules[i] && rules[i](changes)
-            if(c) return c
+        for (const item of original) {
+            let mineDeleted = lcsMineIndex < lcsMine.length && lcsMine[lcsMineIndex] !== item;
+            let yoursDeleted = lcsYoursIndex < lcsYours.length && lcsYours[lcsYoursIndex] !== item;
+
+            if (!mineDeleted && !yoursDeleted) {
+                while (mineIndex < mine.length && mine[mineIndex] !== item) {
+                    result.push(mine[mineIndex++]);
+                }
+                while (yoursIndex < yours.length && yours[yoursIndex] !== item) {
+                    if (!result.includes(yours[yoursIndex]) && (lastCommonItem === null || yours[yoursIndex] > lastCommonItem)) {
+                        result.push(yours[yoursIndex]);
+                    }
+                    yoursIndex++;
+                }
+
+                if (mine[mineIndex] !== yours[yoursIndex]) {
+                    const conflictResult = resolve(mine[mineIndex], item, yours[yoursIndex]);
+                    if (conflictResult !== undefined) {
+                        result.push(conflictResult);
+                    }
+                } else {
+                    result.push(item);
+                }
+
+                lastCommonItem = item;
+                mineIndex++;
+                yoursIndex++;
+                lcsMineIndex++;
+                lcsYoursIndex++;
+            } else if (mineDeleted && !yoursDeleted) {
+                while (yoursIndex < yours.length && yours[yoursIndex] !== item) {
+                    result.push(yours[yoursIndex++]);
+                }
+                yoursIndex++;
+                lcsYoursIndex++;
+            } else if (!mineDeleted && yoursDeleted) {
+                while (mineIndex < mine.length && mine[mineIndex] !== item) {
+                    result.push(mine[mineIndex++]);
+                }
+                mineIndex++;
+                lcsMineIndex++;
+            }
         }
-        changes.splice(1,1) // remove concestor
-        //returning the conflicts as an object is a really bad idea,
-        // because == will not detect they are the same. and conflicts build.
-        // better to use
-        // '<<<<<<<<<<<<<'
-        // of course, i wrote this before i started on snob, so i didn't know that then.
-        /*var conflict = ['>>>>>>>>>>>>>>>>']
-        while(changes.length)
-          conflict = conflict.concat(changes.shift()).concat('============')
-        conflict.pop()
-        conflict.push          ('<<<<<<<<<<<<<<<')
-        changes.unshift       ('>>>>>>>>>>>>>>>')
-        return conflict*/
-        //nah, better is just to use an equal can handle objects
-        return {'?': changes}
+
+        while (mineIndex < mine.length) {
+            result.push(mine[mineIndex++]);
+        }
+        while (yoursIndex < yours.length) {
+            if (!result.includes(yours[yoursIndex]) && (lastCommonItem === null || yours[yoursIndex] > lastCommonItem)) {
+                result.push(yours[yoursIndex]);
+            }
+            yoursIndex++;
+        }
+
+        return result;
     }
-    return exports
+
+    exports.takeSmallest = function (changes) {
+        let smallest = null;
+        for (let i = 0; i < changes.length; i++) {
+            let curChange = changes[i];
+            if (!smallest || curChange[1] < smallest[1]) {
+                smallest = curChange;
+            }
+        }
+        return smallest;
+    }
+
+    exports.takeLargest = function (changes) {
+        let largest = null;
+        for (let i = 0; i < changes.length; i++) {
+            let curChange = changes[i];
+            if (!largest || curChange[1] > largest[1]) {
+                largest = curChange;
+            }
+        }
+        return largest;
+    }
+
+    let rules = (deps && deps.rules) || [
+        exports.oddOneOut,
+        exports.threeWayMerge,
+        exports.insertMergeOverDelete,
+        exports.takeSmallest,
+        exports.takeLargest
+    ];
+
+    function resolve(changes) {
+        for (let i in rules) {
+            const c = rules[i](changes);
+            if (c) return c;
+        }
+        changes.splice(1, 1);
+        return {'?': changes};
+    }
+
+    function allDifferent(arr) {
+        for (let i = 0; i < arr.length; i++) {
+            for (let j = i + 1; j < arr.length; j++) {
+                if (equal(arr[i], arr[j])) return false;
+            }
+        }
+
+        return true;
+    }
+
+    return exports;
 }
-exports(null, exports)
+
+exports(null, exports);
