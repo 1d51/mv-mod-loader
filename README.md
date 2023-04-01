@@ -52,4 +52,4 @@ You can also include a `config.json` file in the mod folder, which allows users 
 Only the `id` and `value` fields are actually used.
 ## Known Issues
 - The plugin doesn't know how to solve ID conflicts. Mod authors have to agree on the ID their mods use.
-- Mod loading is a bit slow. The first launch after changing the mod list can take up to a minute, depending on number of mods and size.
+- Mod loading is a bit slow. The first launch after changing the mod list can take up to a minute.
