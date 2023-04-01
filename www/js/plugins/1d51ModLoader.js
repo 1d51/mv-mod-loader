@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 1.3.5
+ * @version 2.0.0
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -22,17 +22,11 @@ ModLoader.Holders = ModLoader.Holders || {};
         "parameters": {}
     };
 
-    $.Config.emptyEvent = /"code": *0/;
-    $.Config.backupSkip = [/diffs/]
+    $.Config.backupSkip = [/diffs/];
 
     $.Config.keyCombine = ["equips", "note", "traits", "learnings", "effects"];
     $.Config.keyMerge = ["pages", "events"];
     $.Config.keyXDiff = ["list"];
-
-    $.Config.diffVersion = 2;
-    $.Config.blockDepth = -1;
-    $.Config.unlink = false;
-    $.Config.clear = true;
 
     $.Helpers.strEq = function (left, right) {
         return JSON.stringify(left) === JSON.stringify(right);
@@ -151,141 +145,33 @@ ModLoader.Holders = ModLoader.Holders || {};
     };
 
     $.Helpers.arrdiff = function (source, original, target) {
+        const sh = $.Helpers.hashCode(JSON.stringify(source));
+        const oh = $.Helpers.hashCode(JSON.stringify(original));
+        const th = $.Helpers.hashCode(JSON.stringify(target));
+
+        if (th === oh) return source;
+        if (sh === oh) return target;
+
         let ss = source.map((obj) => JSON.stringify(obj));
         let os = original.map((obj) => JSON.stringify(obj));
         let ts = target.map((obj) => JSON.stringify(obj));
 
-        if ($.Config.clear) {
-            ss = ss.filter(x => !x.match($.Config.emptyEvent));
-            os = os.filter(x => !x.match($.Config.emptyEvent));
-            ts = ts.filter(x => !x.match($.Config.emptyEvent));
-        }
-
-        const sh = $.Helpers.hashCode(JSON.stringify(ss));
-        const oh = $.Helpers.hashCode(JSON.stringify(os));
-        const th = $.Helpers.hashCode(JSON.stringify(ts));
-
-        const xx = "[v" + $.Config.diffVersion.toString() + "]" +
-            sh.toString() + oh.toString() + th.toString();
-
+        const xx = sh.toString() + oh.toString() + th.toString();
         const path = $.Params.diffsPath + xx + ".json";
-        os = $.Helpers.squash(os);
         let diff = null;
 
         if ($.fs.existsSync(path)) {
             const diffFile = $.fs.readFileSync(path);
             diff = JSON.parse(diffFile);
         } else {
-            ss = $.Helpers.squash(ss);
-            ts = $.Helpers.squash(ts);
             diff = $.xdiff.diff3(ss, os, ts);
-
             if (diff == null) return original;
+
             $.Helpers.deepWriteSync(path, JSON.stringify(diff));
         }
 
-        const rs = $.Helpers.loosen($.xdiff.patch(os, diff));
+        const rs = $.xdiff.patch(os, diff);
         return rs.map((str) => JSON.parse(str));
-    };
-
-    $.Helpers.level = function(arr) {
-
-    }
-
-    // Some events must follow another event of a specific type. This stops them from being separated.
-    // https://forums.rpgmakerweb.com/index.php?threads/mv-mz-the-interpreter-and-you-what-makes-an-event.152035/
-
-    $.Helpers.squash = function(arr, block=true) {
-        const result = [];
-        let text = "";
-
-        for (let i = 0; i < arr.length; i++) {
-            if (text.length === 0) {
-                text = arr[i];
-            } else {
-                if (block && text.match(/"code": *111/)) {
-                    if (arr[i].match(/"code": *111/)) {
-                        const aux = text.split(/(?<=}),(?=\{)/);
-                        result.push(...$.Helpers.squash(aux, false));
-                        text = arr[i];
-                    } else if (arr[i].match(/"code": *412/)) {
-                        text += "," + arr[i];
-                        result.push(text);
-                        text = "";
-                    } else {
-                        text += "," + arr[i];
-                    }
-                } else if (text.match(/"code": *101/)) {
-                    if (arr[i].match(/"code": *401/)) {
-                        text += "," + arr[i];
-                    } else {
-                        result.push(text);
-                        text = arr[i];
-                    }
-                } else if (text.match(/"code": *102/)) {
-                    if (arr[i].match(/"code": *402/)) {
-                        text += "," + arr[i];
-                    } else {
-                        result.push(text);
-                        text = arr[i];
-                    }
-                } else if (text.match(/"code": *105/)) {
-                    if (arr[i].match(/"code": *405/)) {
-                        text += "," + arr[i];
-                    } else {
-                        result.push(text);
-                        text = arr[i];
-                    }
-                } else if (text.match(/"code": *108/)) {
-                    if (arr[i].match(/"code": *408/)) {
-                        text += "," + arr[i];
-                    } else {
-                        result.push(text);
-                        text = arr[i];
-                    }
-                } else if (text.match(/"code": *301/)) {
-                    if (arr[i].match(/"code": *601/)) {
-                        text += "," + arr[i];
-                    } else {
-                        result.push(text);
-                        text = arr[i];
-                    }
-                } else if (text.match(/"code": *302/)) {
-                    if (arr[i].match(/"code": *605/)) {
-                        text += "," + arr[i];
-                    } else {
-                        result.push(text);
-                        text = arr[i];
-                    }
-                } else if (text.match(/"code": *355/)) {
-                    if (arr[i].match(/"code": *655/)) {
-                        text += "," + arr[i];
-                    } else {
-                        result.push(text);
-                        text = arr[i];
-                    }
-                } else {
-                    result.push(text);
-                    text = arr[i];
-                }
-            }
-        }
-
-        if (text.length > 0)
-            result.push(text);
-        return result;
-    };
-
-    $.Helpers.loosen = function(arr) {
-        const result = [];
-        for (let i = 0; i < arr.length; i++) {
-            const parts = JSON.parse("[" + arr[i] + "]");
-            for (let j = 0; j < parts.length; j++) {
-                result.push(JSON.stringify(parts[j]));
-            }
-        }
-
-        return result;
     };
 
     $.Helpers.append = function (target, input) {
@@ -357,17 +243,13 @@ ModLoader.Holders = ModLoader.Holders || {};
                 const sourceData = $.Helpers.parse(sourceFile, isPlugin);
 
                 if (key.split("/")[0].includes("data")) {
-                    let reducedData = metadata["reduced"] ? sourceData : $.reduceData(sourceData, backupData);
-
+                    let reducedData = $.reduceData(sourceData, backupData);
                     if (!$.Helpers.strEq(sourceData, reducedData)) {
                         const reducedStr = JSON.stringify(reducedData);
                         $.Helpers.deepWriteSync(filePaths[key][i], reducedStr);
                     }
-
-                    if (reducedData == null || reducedData.length === 0) {
-                        if ($.Config.unlink) $.fs.unlink(filePaths[key][i]);
-                        continue;
-                    }
+                    
+                    if (reducedData == null) continue;
 
                     const overrides = (metadata["overrides"] || {})[key];
                     targetData = $.mergeData(reducedData, backupData, targetData, overrides);
@@ -626,7 +508,6 @@ ModLoader.Holders = ModLoader.Holders || {};
             return {
                 "name": mod,
 				"version": "",
-				"reduced": false,
 				"dependencies": [],
 				"incompatible": [],
 				"overrides": []
