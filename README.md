@@ -1,10 +1,10 @@
 # MV Mod Loader
-A mod loader for RPG Maker MV games. It uses the xdiff library implemented by [Dominic Tarr](https://github.com/dominictarr) to combine complex JSON files (think CommonEvents.json), and some heuristics to handle simpler files (think Items.json). By making a backup of the game's original files on first launch after install, it then merges the changes made by the different mods on bootup, and overrides the game's files, allowing users to easily change the mods they have installed. To make game bootup faster, it compresses mods so that they only contain relevant changes in their files. It also stores diffs between files once computed, to further speed things up.
+A mod loader for RPG Maker MV games. It uses the xdiff library implemented by [Dominic Tarr](https://github.com/dominictarr), optimized and with several fixes, to combine complex JSON files (think CommonEvents.json), and some heuristics to handle simpler files (think Items.json). By making a backup of the game's original files on first launch after install, it then merges the changes made by the different mods on bootup, and overrides the game's files, allowing users to easily change the mods they have installed. To make game bootup faster, it compresses mods so that they only contain relevant changes in their files. It also stores diffs between files once computed, to further speed things up.
 
 ## Install Instructions
 For the game developer, adding this plugin to their game is done as they would with any other plugin. The included libraries are required. To allow modders to easily coordinate with one another, it's recommended to use something like this [Google Sheet](https://docs.google.com/spreadsheets/d/15YZfWihvax0tU8Hzte8y-wU1b83DBtJDsY7YADFiCTw/edit?usp=sharing) (courtesy of Gummiel#0001), where they'll be able to keep track of what ID are reserved.
 
-For a modder to add support to a game that does not come with this plugin pre-installed, they will have to distribute some extra, game-dependant files, such as `plugins.js`. It's also recommended that they package their mods along with the generated `diffs` folder, to reduce first-launch loading times.
+For a modder to add support to a game that does not come with this plugin pre-installed, they will have to distribute some extra, game-dependant files, such as `plugins.js`.
 
 A user can install mods by adding them inside the `www/mods` folder, independently of whether those mods were designed with this plugin in mind or not. For example, if a modder distributes a mod in the form of a folder like `example/www/...`, installing said mod so that it's loaded through the plugin is as simple as drag and dropping the whole thing, so that it looks like `www/mods/example` inside of the game's folder.
 
@@ -52,4 +52,4 @@ You can also include a `config.json` file in the mod folder, which allows users 
 Only the `id` and `value` fields are actually used.
 ## Known Issues
 - The plugin doesn't know how to solve ID conflicts. Mod authors have to agree on the ID their mods use.
-- Mod loading is **slow**. The first launch after changing the mod list can take a few minutes, depending on number of mods and size. You can potentially save your users the trouble of having to wait by including the **diffs**.
+- Mod loading is a bit slow. The first launch after changing the mod list can take up to a minute, depending on number of mods and size.
