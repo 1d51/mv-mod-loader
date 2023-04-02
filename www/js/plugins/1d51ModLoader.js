@@ -24,9 +24,9 @@ ModLoader.Holders = ModLoader.Holders || {};
 
     $.Config.backupSkip = [/diffs/];
 
-    $.Config.keyCombine = ["equips", "note", "traits", "learnings", "effects"];
+    $.Config.keyCombine = [];
     $.Config.keyMerge = ["pages", "events"];
-    $.Config.keyXDiff = ["list"];
+    $.Config.keyXDiff = ["list", "note", "equips", "traits", "learnings", "effects"];
 
     $.Helpers.strEq = function (left, right) {
         return JSON.stringify(left) === JSON.stringify(right);
@@ -54,8 +54,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 
     $.Helpers.untag = function (str) {
         const matches = str.match(/<[^<>]*>[^<>]+<\/[^<>]*>|<[^<>]*>/g) || [];
-        const unique = Array.from(new Set(matches.map(x => x.trim())));
-        return unique.join("\n");
+        return Array.from(new Set(matches.map(x => x.trim())));
     };
 
     $.Helpers.move = function (array, index, delta) {
@@ -144,7 +143,16 @@ ModLoader.Holders = ModLoader.Holders || {};
         return JSON.parse(str);
     };
 
-    $.Helpers.arrdiff = function (source, original, target) {
+    $.Helpers.tagDiff = function (source, original, target) {
+        const sa = $.Helpers.untag(source);
+        const oa = $.Helpers.untag(original);
+        const ta = $.Helpers.untag(target);
+
+        const ma = $.Helpers.arrDiff(sa, oa, ta);
+        return ma.join("\n");
+    };
+
+    $.Helpers.arrDiff = function (source, original, target) {
         const sh = $.Helpers.hashCode(JSON.stringify(source));
         const oh = $.Helpers.hashCode(JSON.stringify(original));
         const th = $.Helpers.hashCode(JSON.stringify(target));
@@ -248,7 +256,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                         const reducedStr = JSON.stringify(reducedData);
                         $.Helpers.deepWriteSync(filePaths[key][i], reducedStr);
                     }
-                    
+
                     if (reducedData == null) continue;
 
                     const overrides = (metadata["overrides"] || {})[key];
@@ -322,14 +330,14 @@ ModLoader.Holders = ModLoader.Holders || {};
                         const aux = result[key].concat(source[key]);
                         if (Array.isArray(source[key])) {
                             result[key] = $.Helpers.dedup(aux);
-                        } else if (key === "note") {
-                            result[key] = $.Helpers.untag(aux);
                         } else result[key] = aux;
                     } else if ($.Config.keyMerge.includes(key)) {
                         result[key] = $.mergeData(source[key], original[key], target[key]);
                     } else if ($.Config.keyXDiff.includes(key)) {
-                        if (Array.isArray(source[key])) {
-                            result[key] = $.Helpers.arrdiff(source[key], original[key], target[key]);
+                        if (typeof source[key] === "string" || source[key] instanceof String) {
+                            result[key] = $.Helpers.tagDiff(source[key], original[key], target[key]);
+                        } else if (Array.isArray(source[key])) {
+                            result[key] = $.Helpers.arrDiff(source[key], original[key], target[key]);
                         } else {
                             const diff = $.xdiff.diff3(source[key], original[key], target[key]);
                             result[key] = $.xdiff.patch(original[key], diff);
@@ -510,7 +518,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 				"version": "",
 				"dependencies": [],
 				"incompatible": [],
-				"overrides": []
+				"overrides": {}
             };
         }
     };
