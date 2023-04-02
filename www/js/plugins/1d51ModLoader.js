@@ -25,7 +25,8 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Config.backupSkip = [/diffs/];
 
     $.Config.keyCombine = [];
-    $.Config.keyMerge = ["pages", "events"];
+    $.Config.keyMerge = ["pages", "events", "terms"];
+    $.Config.keySquash = ["armorTypes", "elements", "equipTypes", "skillTypes", "weaponTypes"];
     $.Config.keyXDiff = ["list", "note", "equips", "traits", "learnings", "effects"];
 
     $.Helpers.strEq = function (left, right) {
@@ -189,6 +190,20 @@ ModLoader.Holders = ModLoader.Holders || {};
         return ts.map((str) => JSON.parse(str));
     };
 
+    $.Helpers.squash = function (source, original, target) {
+        if (!Array.isArray(target)) return source;
+
+        const result = [...target];
+        for (let i = 0; i < source.length; i++) {
+            if (i >= result.length - 1) result.push(source[i]);
+            else if (result[i] == null || result[i].length === 0) {
+                result[i] = source[i];
+            }
+        }
+
+        return result;
+    };
+
     /************************************************************************************/
 
     $.Params.root = $.Helpers.createPath("");
@@ -333,6 +348,8 @@ ModLoader.Holders = ModLoader.Holders || {};
                         } else result[key] = aux;
                     } else if ($.Config.keyMerge.includes(key)) {
                         result[key] = $.mergeData(source[key], original[key], target[key]);
+                    } else if ($.Config.keySquash.includes(key)) {
+                        result[key] = $.Helpers.squash(source[key], original[key], target[key]);
                     } else if ($.Config.keyXDiff.includes(key)) {
                         if (typeof source[key] === "string" || source[key] instanceof String) {
                             result[key] = $.Helpers.tagDiff(source[key], original[key], target[key]);
