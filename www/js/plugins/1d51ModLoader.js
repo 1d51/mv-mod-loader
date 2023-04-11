@@ -731,8 +731,11 @@ Scene_Mods.prototype.createModsWindow = function () {
 };
 
 Scene_Mods.prototype.popScene = function () {
-    if (ModLoader.Params.reboot) SceneManager.exit()
     Scene_MenuBase.prototype.popScene.call(this);
+    if (ModLoader.Params.reboot) {
+        SceneManager.exit();
+        window.close();
+    }
 };
 
 /************************************************************************************/
