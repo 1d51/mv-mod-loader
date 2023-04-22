@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.1.1
+ * @version 2.2.0
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -15,23 +15,65 @@ ModLoader.Config = ModLoader.Config || {};
 ModLoader.Holders = ModLoader.Holders || {};
 
 (function ($) {
-    $.Config.pluginConfig = {
-        "name": "1d51ModLoader",
-        "status": true,
-        "description": "A simple mod loader for RPG Maker MV.",
-        "parameters": {}
-    };
-
-    $.Config.backupSkip = [/diffs/];
-
     $.Config.keyCombine = [];
+    $.Config.keyAssign = ["parameters"];
     $.Config.keyMerge = ["pages", "events", "terms"];
     $.Config.keySquash = ["armorTypes", "elements", "equipTypes", "skillTypes", "weaponTypes"];
     $.Config.keyXDiff = ["list", "note", "equips", "traits", "learnings", "effects"];
 
+    $.Config.backupSkip = [/diffs/];
+
     $.Helpers.strEq = function (left, right) {
         return JSON.stringify(left) === JSON.stringify(right);
     };
+
+    $.Helpers.idEq = function (left, right) {
+        if (left != null && right != null) {
+            if ("id" in left && "id" in right) {
+                return left["id"] === right["id"];
+            } else if ("name" in left && "name" in right) {
+                return left["name"] === right["name"];
+            }
+        } else if (left != null) {
+            if ("id" in left) {
+                return left["id"] === right;
+            } else if ("name" in left) {
+                return left["name"] === right;
+            }
+        } else if (right != null) {
+            if ("id" in right) {
+                return right["id"] === left;
+            } else if ("name" in right) {
+                return right["name"] === left;
+            }
+        }
+
+        return left === right;
+    };
+
+    $.Helpers.idIncl = function (arr, obj) {
+        if (obj != null) {
+            if ("id" in obj) {
+                if (Array.isArray(arr)) {
+                    return arr.includes(obj["id"]);
+                } else {
+                    return arr === obj["id"];
+                }
+            } else if ("name" in obj) {
+                if (Array.isArray(arr)) {
+                    return arr.includes(obj["name"]);
+                } else {
+                    return arr === obj["name"];
+                }
+            }
+        }
+
+        if (Array.isArray(arr)) {
+            return arr.includes(obj);
+        } else {
+            return arr === obj;
+        }
+    }
 
     $.Helpers.hashCode = function (string) {
         let hash = 0;
@@ -265,10 +307,11 @@ ModLoader.Holders = ModLoader.Holders || {};
                 const sourceFile = $.fs.readFileSync(filePaths[key][i]);
                 const sourceData = $.Helpers.parse(sourceFile, isPlugin);
 
-                if (key.split("/")[0].includes("data")) {
+                if (key.split("/")[0].includes("data") || isPlugin) {
                     let reducedData = $.reduceData(sourceData, backupData);
                     if (!$.Helpers.strEq(sourceData, reducedData)) {
-                        const reducedStr = JSON.stringify(reducedData);
+                        let reducedStr = JSON.stringify(reducedData);
+                        if (isPlugin) reducedStr = "var $plugins =\n" + reducedStr;
                         $.Helpers.deepWriteSync(filePaths[key][i], reducedStr);
                     }
 
@@ -276,13 +319,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 
                     const overrides = (metadata["overrides"] || {})[key];
                     targetData = $.mergeData(reducedData, backupData, targetData, overrides);
-                } else if (isPlugin) {
-                    let aux = targetData.concat(sourceData);
-                    aux = $.Helpers.append(aux, $.Config.pluginConfig);
-                    targetData = $.Helpers.dedup(aux);
-                } else {
-                    targetData = JSON.parse(JSON.stringify(sourceData));
-                }
+                } else targetData = JSON.parse(JSON.stringify(sourceData));
             }
 
             const path = $.Params.root + key;
@@ -320,15 +357,15 @@ ModLoader.Holders = ModLoader.Holders || {};
         if (Array.isArray(source) && Array.isArray(target)) {
             for (let i = 0; i < source.length; i++) {
                 if (source[i] == null) continue;
-                if (source[i]["id"] == null) {
+                if ($.Helpers.idEq(source[i], null)) {
                     if (original.length > i && target.length > i) result[i] = $.mergeData(source[i], original[i], target[i]);
 					else if (target.length > i) result[i] = $.mergeData(source[i], target[i], target[i]);
 					else result.push(source[i]);
                     continue;
                 }
-                const oi = original ? original.findIndex(x => x && x["id"] === source[i]["id"]) : -1;
-                const ti = target ? target.findIndex(x => x && x["id"] === source[i]["id"]) : -1;
-                if (Array.isArray(overrides) && overrides.includes(source[i]["id"]) || overrides === source[i]["id"]) {
+                const oi = original ? original.findIndex(x => x && $.Helpers.idEq(x, source[i])) : -1;
+                const ti = target ? target.findIndex(x => x && $.Helpers.idEq(x, source[i])) : -1;
+                if (Array.isArray(overrides) && $.Helpers.idIncl(overrides, source[i])) {
                     if (ti >= 0) result[ti] = source[i]; else result.push(source[i]);
                     continue;
                 }
@@ -346,6 +383,8 @@ ModLoader.Holders = ModLoader.Holders || {};
                         if (Array.isArray(source[key])) {
                             result[key] = $.Helpers.dedup(aux);
                         } else result[key] = aux;
+                    } else if ($.Config.keyAssign.includes(key)) {
+                        result[key] = Object.assign(original[key], target[key], source[key]);
                     } else if ($.Config.keyMerge.includes(key)) {
                         result[key] = $.mergeData(source[key], original[key], target[key]);
                     } else if ($.Config.keySquash.includes(key)) {
@@ -381,8 +420,8 @@ ModLoader.Holders = ModLoader.Holders || {};
         if (Array.isArray(original) && Array.isArray(source)) {
             for (let i = 0; i < source.length; i++) {
                 if (source[i] == null) continue;
-                const ri = result ? result.findIndex(x => x && x["id"] === source[i]["id"]) : -1;
-                const oi = original ? original.findIndex(x => x && x["id"] === source[i]["id"]) : -1;
+                const ri = result ? result.findIndex(x => x && $.Helpers.idEq(x, source[i])) : -1;
+                const oi = original ? original.findIndex(x => x && $.Helpers.idEq(x, source[i])) : -1;
 
                 if (ri >= 0 && oi >= 0) {
                     if ($.Helpers.strEq(original[oi], source[i])) {
@@ -731,11 +770,11 @@ Scene_Mods.prototype.createModsWindow = function () {
 };
 
 Scene_Mods.prototype.popScene = function () {
-    Scene_MenuBase.prototype.popScene.call(this);
+	Scene_MenuBase.prototype.popScene.call(this);
     if (ModLoader.Params.reboot) {
-        SceneManager.exit();
-        window.close();
-    }
+		SceneManager.exit();
+		window.close();
+	}
 };
 
 /************************************************************************************/
