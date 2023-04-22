@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.2.1
+ * @version 2.2.2
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -246,6 +246,18 @@ ModLoader.Holders = ModLoader.Holders || {};
         return result;
     };
 
+    $.Helpers.assign = function (source, original, target) {
+        const result = JSON.parse(JSON.stringify(original));
+        Object.keys(target).forEach(function (key) {
+            result[key] = target[key];
+        });
+        Object.keys(source).forEach(function (key) {
+            result[key] = source[key];
+        });
+
+        return result;
+    };
+
     /************************************************************************************/
 
     $.Params.root = $.Helpers.createPath("");
@@ -366,7 +378,8 @@ ModLoader.Holders = ModLoader.Holders || {};
                 const oi = original ? original.findIndex(x => x && $.Helpers.idEq(x, source[i])) : -1;
                 const ti = target ? target.findIndex(x => x && $.Helpers.idEq(x, source[i])) : -1;
                 if ($.Helpers.idIncl(overrides, source[i])) {
-                    if (ti >= 0) result[ti] = source[i]; else result.push(source[i]);
+                    if (ti >= 0) result[ti] = source[i];
+                    else result.push(source[i]);
                     continue;
                 }
                 if (oi >= 0 && ti >= 0) result[ti] = $.mergeData(source[i], original[oi], target[ti]);
@@ -384,7 +397,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                             result[key] = $.Helpers.dedup(aux);
                         } else result[key] = aux;
                     } else if ($.Config.keyAssign.includes(key)) {
-                        result[key] = Object.assign(original[key], target[key], source[key]);
+                        result[key] = $.Helpers.assign(source[key], original[key], target[key]);
                     } else if ($.Config.keyMerge.includes(key)) {
                         result[key] = $.mergeData(source[key], original[key], target[key]);
                     } else if ($.Config.keySquash.includes(key)) {
