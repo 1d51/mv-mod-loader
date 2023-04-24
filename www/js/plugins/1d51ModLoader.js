@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.2.2
+ * @version 2.2.3
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -26,6 +26,10 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Helpers.strEq = function (left, right) {
         return JSON.stringify(left) === JSON.stringify(right);
     };
+
+    $.Helpers.idPresent = function(obj) {
+        return obj != null && ("id" in obj || "name" in obj);
+    }
 
     $.Helpers.idEq = function (left, right) {
         if (left != null && right != null) {
@@ -69,6 +73,8 @@ ModLoader.Holders = ModLoader.Holders || {};
         }
 
         if (Array.isArray(arr)) {
+            return arr.includes(obj);
+        } else if (typeof arr === "string") {
             return arr.includes(obj);
         } else {
             return arr === obj;
@@ -369,7 +375,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         if (Array.isArray(source) && Array.isArray(target)) {
             for (let i = 0; i < source.length; i++) {
                 if (source[i] == null) continue;
-                if ($.Helpers.idEq(source[i], null)) {
+                if (!$.Helpers.idPresent(source[i])) {
                     if (original.length > i && target.length > i) result[i] = $.mergeData(source[i], original[i], target[i]);
 					else if (target.length > i) result[i] = $.mergeData(source[i], target[i], target[i]);
 					else result.push(source[i]);
