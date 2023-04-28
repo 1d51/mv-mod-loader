@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.2.3
+ * @version 2.2.4
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -313,6 +313,8 @@ ModLoader.Holders = ModLoader.Holders || {};
 
         Object.keys(filePaths).forEach(function (key) {
             const isPlugin = key.match(/plugins[^\/]*\.js/);
+            if (isPlugin) $.Params.reboot = true;
+
             const backupPath = $.Params.backupsPath + key;
             const backupFile = $.fs.readFileSync(backupPath);
             const backupData = $.Helpers.parse(backupFile, isPlugin);
@@ -757,6 +759,9 @@ ModLoader.Holders = ModLoader.Holders || {};
     }
 
     $.readMods();
+    if ($.Params.reboot) {
+        nw.Window.get().reload();
+    }
 
 })(ModLoader);
 
@@ -786,13 +791,13 @@ Scene_Mods.prototype.createModsWindow = function () {
     this._modsWindow = new Window_Mods();
     this._modsWindow.setHandler('cancel', this.popScene.bind(this));
     this.addWindow(this._modsWindow);
+    ModLoader.Params.reboot = false;
 };
 
 Scene_Mods.prototype.popScene = function () {
 	Scene_MenuBase.prototype.popScene.call(this);
     if (ModLoader.Params.reboot) {
-		SceneManager.exit();
-		window.close();
+        nw.Window.get().reload();
 	}
 };
 
