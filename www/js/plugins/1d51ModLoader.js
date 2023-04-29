@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.2.4
+ * @version 2.2.5
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -795,10 +795,17 @@ Scene_Mods.prototype.createModsWindow = function () {
 };
 
 Scene_Mods.prototype.popScene = function () {
-	Scene_MenuBase.prototype.popScene.call(this);
     if (ModLoader.Params.reboot) {
-        nw.Window.get().reload();
-	}
+        this._rebootWindow = new Window_RebootConfirm();
+        this._rebootWindow.setHandler('confirm', () => nw.Window.get().reload());
+        this.addWindow(this._rebootWindow);
+
+        this._rebootWindow.open();
+        this._rebootWindow.activate();
+        this._rebootWindow.select(0);
+    } else {
+        Scene_MenuBase.prototype.popScene.call(this);
+    }
 };
 
 /************************************************************************************/
@@ -918,8 +925,8 @@ function Window_ModConfirm() {
 Window_ModConfirm.prototype = Object.create(Window_Command.prototype);
 Window_ModConfirm.prototype.constructor = Window_ModConfirm;
 
-Window_ModConfirm.prototype.firstLine = 'The save was created with mods different than enabled.\n';
-Window_ModConfirm.prototype.secondLine = 'This can cause issues with your game, load anyways?\n\n';
+Window_ModConfirm.prototype.firstLine = 'The save has mods different than enabled.\n';
+Window_ModConfirm.prototype.secondLine = 'This can cause issues, load anyways?\n\n';
 Window_ModConfirm.prototype.lines;
 
 Window_ModConfirm.prototype.initialize = function (count) {
@@ -978,5 +985,47 @@ Window_ModConfirm.prototype.windowHeight = function () {
 Window_ModConfirm.prototype.itemRect = function (index) {
     let rect = Window_Selectable.prototype.itemRect.call(this, index);
     rect.y += this.lineHeight() * this.lines;
+    return rect;
+};
+
+/************************************************************************************/
+
+function Window_RebootConfirm() {
+    this.initialize.apply(this, arguments);
+}
+
+Window_RebootConfirm.prototype = Object.create(Window_Command.prototype);
+Window_RebootConfirm.prototype.constructor = Window_RebootConfirm;
+
+Window_RebootConfirm.prototype.firstLine = 'The game will now restart to change the mods.\n';
+Window_RebootConfirm.prototype.secondLine = 'This can take a minute, please be patient.';
+
+Window_RebootConfirm.prototype.initialize = function () {
+    Window_Command.prototype.initialize.call(this, 0, 0);
+    const width = Math.max(this.textWidth(this.firstLine), this.textWidth(this.secondLine));
+    this.width = width + this.standardPadding() * 2 + this.textPadding() * 2;
+    this.refresh();
+
+    this.x = (Graphics.boxWidth - this.width) / 2;
+    this.y = (Graphics.boxHeight - this.height) / 2;
+    const text = this.firstLine + this.secondLine;
+    this.drawTextEx(text, this.textPadding(), 0);
+};
+
+Window_RebootConfirm.prototype.makeCommandList = function () {
+    this.addCommand('Ok', 'confirm');
+};
+
+Window_RebootConfirm.prototype.itemTextAlign = function () {
+    return 'center';
+};
+
+Window_RebootConfirm.prototype.windowHeight = function () {
+    return this.fittingHeight(3);
+};
+
+Window_RebootConfirm.prototype.itemRect = function (index) {
+    let rect = Window_Selectable.prototype.itemRect.call(this, index);
+    rect.y += this.lineHeight() * 2;
     return rect;
 };
