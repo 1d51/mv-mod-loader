@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.2.5
+ * @version 2.2.6
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -272,6 +272,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Params.diffsPath = $.Params.root + "diffs/";
 
     $.Params.reboot = false;
+    $.Params.badFolder = false;
 
     $.readMods = function () {
         $.Helpers.ensureDirectoryExistence($.Params.modsPath);
@@ -294,6 +295,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         const filePaths = {};
         for (let i = 0; i < mods.length; i++) {
             const modPath = $.Params.modsPath + mods[i] + "/www";
+            if (!$.fs.existsSync(modPath)) continue;
             const files = $.Helpers.getFilesRecursively(modPath);
             for (let j = 0; j < files.length; j++) {
                 const keyPath = $.Helpers.appendix(files[j]);
@@ -672,6 +674,19 @@ ModLoader.Holders = ModLoader.Holders || {};
         }
     };
 
+    $.checkMods = function() {
+        const modFolders = $.Helpers.getFolders($.Params.modsPath);
+        const mods = $.sortMods(modFolders);
+
+        for (let i = 0; i < mods.length; i++) {
+            const modPath = $.Params.modsPath + mods[i] + "/www";
+            if (!$.fs.existsSync(modPath)) {
+                $.Params.badFolder = true;
+                return;
+            }
+        }
+    }
+
     /************************************************************************************/
 
     $.Holders.commandNewGame = Scene_Title.prototype.commandNewGame;
@@ -691,7 +706,8 @@ ModLoader.Holders = ModLoader.Holders || {};
         $.Holders.makeCommandList.call(this);
         const modsPath = $.Params.modsPath;
         const modFolders = $.Helpers.getFolders(modsPath);
-        this.addCommand("Mods", 'mods', modFolders.length > 0);
+        const enabled = modFolders.length > 0 && !$.Params.badFolder;
+        this.addCommand("Mods", 'mods', enabled);
     };
 
     $.Holders.createCommandWindow = Scene_Title.prototype.createCommandWindow;
@@ -762,6 +778,8 @@ ModLoader.Holders = ModLoader.Holders || {};
     if ($.Params.reboot) {
         nw.Window.get().reload();
     }
+
+    $.checkMods();
 
 })(ModLoader);
 
@@ -925,8 +943,8 @@ function Window_ModConfirm() {
 Window_ModConfirm.prototype = Object.create(Window_Command.prototype);
 Window_ModConfirm.prototype.constructor = Window_ModConfirm;
 
-Window_ModConfirm.prototype.firstLine = 'The save has mods different than enabled.\n';
-Window_ModConfirm.prototype.secondLine = 'This can cause issues, load anyways?\n\n';
+Window_ModConfirm.prototype.firstLine = "The save has mods different than enabled.\n";
+Window_ModConfirm.prototype.secondLine = "This can cause issues, load anyways?\n\n";
 Window_ModConfirm.prototype.lines;
 
 Window_ModConfirm.prototype.initialize = function (count) {
@@ -936,8 +954,8 @@ Window_ModConfirm.prototype.initialize = function (count) {
 };
 
 Window_ModConfirm.prototype.makeCommandList = function () {
-    this.addCommand('Yes', 'confirm');
-    this.addCommand('No', 'cancel');
+    this.addCommand("Yes", "confirm");
+    this.addCommand("No", "cancel");
 };
 
 Window_ModConfirm.prototype.setData = function (added, removed) {
@@ -961,25 +979,25 @@ Window_ModConfirm.prototype.setData = function (added, removed) {
     let text = this.firstLine + this.secondLine;
 
     if (added.length > 0) {
-        text += added.join('\n');
+        text += added.join("\n");
         if (removed.length > 0) {
-            text += '\n';
+            text += "\n";
         }
     }
     if (removed.length > 0) {
-        text += removed.join('\n');
+        text += removed.join("\n");
     }
-    text += '\n';
+    text += "\n";
 
     this.drawTextEx(text, this.textPadding(), 0);
 }
 
 Window_ModConfirm.prototype.itemTextAlign = function () {
-    return 'center';
+    return "center";
 };
 
 Window_ModConfirm.prototype.windowHeight = function () {
-    return this.fittingHeight(2 + this.lines);
+    return this.fittingHeight(this.lines + 2);
 };
 
 Window_ModConfirm.prototype.itemRect = function (index) {
