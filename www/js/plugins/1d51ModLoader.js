@@ -6,7 +6,7 @@
 
 var ModLoader = ModLoader || {};
 
-ModLoader.fs = require('fs');
+ModLoader.fs = require("fs");
 ModLoader.xdiff = require("./js/libs/xdiff");
 
 ModLoader.Helpers = ModLoader.Helpers || {};
@@ -166,7 +166,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     };
 
     $.Helpers.ensureDirectoryExistence = function (path) {
-        const index = path.lastIndexOf('/');
+        const index = path.lastIndexOf("/");
         if (index === -1) return;
 
         const directory = path.substring(0, index);
@@ -176,13 +176,13 @@ ModLoader.Holders = ModLoader.Holders || {};
     };
 
     $.Helpers.appendix = function (path) {
-        const index = path.indexOf('/www');
+        const index = path.indexOf("/www");
         return path.substr(index + 5);
     };
 
     $.Helpers.modName = function (path) {
-        const index = path.indexOf('/mods');
-        return path.substr(index + 6).split('/')[0];
+        const index = path.indexOf("/mods");
+        return path.substr(index + 6).split("/")[0];
     };
 
     $.Helpers.parse = function (file, variable = false) {
@@ -285,7 +285,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 
         const files = $.Helpers.getFilesRecursively($.Params.backupsPath);
         for (let i = 0; i < files.length; i++) {
-            const index = files[i].indexOf('/backups');
+            const index = files[i].indexOf("/backups");
             const keyPath = files[i].substr(index + 10);
             const originPath = $.Params.root + keyPath;
             const backupFile = $.fs.readFileSync(files[i]);
@@ -707,13 +707,13 @@ ModLoader.Holders = ModLoader.Holders || {};
         const modsPath = $.Params.modsPath;
         const modFolders = $.Helpers.getFolders(modsPath);
         const enabled = modFolders.length > 0 && !$.Params.badFolder;
-        this.addCommand("Mods", 'mods', enabled);
+        this.addCommand("Mods", "mods", enabled);
     };
 
     $.Holders.createCommandWindow = Scene_Title.prototype.createCommandWindow;
     Scene_Title.prototype.createCommandWindow = function () {
         $.Holders.createCommandWindow.call(this);
-        this._commandWindow.setHandler('mods', this.mods.bind(this));
+        this._commandWindow.setHandler("mods", this.mods.bind(this));
     };
 
     Scene_Title.prototype.mods = function () {
@@ -731,8 +731,8 @@ ModLoader.Holders = ModLoader.Holders || {};
     if (Yanfly.Save != null) {
         Scene_File.prototype.createModConfirmWindow = function (lines) {
             this._modConfirmWindow = new Window_ModConfirm(lines);
-            this._modConfirmWindow.setHandler('confirm', this.onModConfirmOk.bind(this));
-            this._modConfirmWindow.setHandler('cancel', this.onModConfirmCancel.bind(this));
+            this._modConfirmWindow.setHandler("confirm", this.onModConfirmOk.bind(this));
+            this._modConfirmWindow.setHandler("cancel", this.onModConfirmCancel.bind(this));
             this.addWindow(this._modConfirmWindow);
         };
 
@@ -764,8 +764,8 @@ ModLoader.Holders = ModLoader.Holders || {};
             const raw = StorageManager.load(this.savefileId());
             const saveMods = (JsonEx.parse(raw).saveMods || []).sort();
             if (!$.Helpers.strEq(enabled, saveMods)) {
-                const added = enabled.filter(x => !saveMods.includes(x)).map(m => '\\C[3]+ ' + $.loadMetadata(m).name);
-                const removed = saveMods.filter(x => !enabled.includes(x)).map(m => '\\C[10]- ' + $.loadMetadata(m).name);
+                const added = enabled.filter(x => !saveMods.includes(x)).map(m => "\\C[3]+ " + $.loadMetadata(m).name);
+                const removed = saveMods.filter(x => !enabled.includes(x)).map(m => "\\C[10]- " + $.loadMetadata(m).name);
                 this.createModConfirmWindow(added.length + removed.length);
                 this.startModConfirmWindow(added, removed);
             } else {
@@ -807,7 +807,7 @@ Scene_Mods.prototype.terminate = function () {
 
 Scene_Mods.prototype.createModsWindow = function () {
     this._modsWindow = new Window_Mods();
-    this._modsWindow.setHandler('cancel', this.popScene.bind(this));
+    this._modsWindow.setHandler("cancel", this.popScene.bind(this));
     this.addWindow(this._modsWindow);
     ModLoader.Params.reboot = false;
 };
@@ -815,7 +815,7 @@ Scene_Mods.prototype.createModsWindow = function () {
 Scene_Mods.prototype.popScene = function () {
     if (ModLoader.Params.reboot) {
         this._rebootWindow = new Window_RebootConfirm();
-        this._rebootWindow.setHandler('confirm', () => nw.Window.get().reload());
+        this._rebootWindow.setHandler("confirm", () => nw.Window.get().reload());
         this.addWindow(this._rebootWindow);
 
         this._rebootWindow.open();
@@ -871,8 +871,8 @@ Window_Mods.prototype.drawItem = function (index) {
     let titleWidth = rect.width - statusWidth;
     this.resetTextColor();
     this.changePaintOpacity(this.isCommandEnabled(index));
-    this.drawText(this.commandName(index), rect.x, rect.y, titleWidth, 'left');
-    this.drawText(this.statusText(index), titleWidth, rect.y, statusWidth, 'right');
+    this.drawText(this.commandName(index), rect.x, rect.y, titleWidth, "left");
+    this.drawText(this.statusText(index), titleWidth, rect.y, statusWidth, "right");
 };
 
 Window_Mods.prototype.statusWidth = function () {
@@ -886,7 +886,7 @@ Window_Mods.prototype.statusText = function (index) {
 };
 
 Window_Mods.prototype.booleanStatusText = function (value) {
-    return value ? 'ON' : 'OFF';
+    return value ? "ON" : "OFF";
 };
 
 Window_Mods.prototype.processOk = function () {
@@ -1015,8 +1015,8 @@ function Window_RebootConfirm() {
 Window_RebootConfirm.prototype = Object.create(Window_Command.prototype);
 Window_RebootConfirm.prototype.constructor = Window_RebootConfirm;
 
-Window_RebootConfirm.prototype.firstLine = 'The game will now restart to change the mods.\n';
-Window_RebootConfirm.prototype.secondLine = 'This can take a minute, please be patient.';
+Window_RebootConfirm.prototype.firstLine = "The game will now restart to change the mods.\n";
+Window_RebootConfirm.prototype.secondLine = "This can take a minute, please be patient.";
 
 Window_RebootConfirm.prototype.initialize = function () {
     Window_Command.prototype.initialize.call(this, 0, 0);
@@ -1031,11 +1031,11 @@ Window_RebootConfirm.prototype.initialize = function () {
 };
 
 Window_RebootConfirm.prototype.makeCommandList = function () {
-    this.addCommand('Ok', 'confirm');
+    this.addCommand("Ok", "confirm");
 };
 
 Window_RebootConfirm.prototype.itemTextAlign = function () {
-    return 'center';
+    return "center";
 };
 
 Window_RebootConfirm.prototype.windowHeight = function () {
