@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.2.8
+ * @version 2.2.9
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -264,6 +264,12 @@ ModLoader.Holders = ModLoader.Holders || {};
         return result;
     };
 
+    $.Helpers.isEmptyEntry = function (entry) {
+        if ("name" in entry)
+            return !entry.name;
+        return false;
+    };
+
     /************************************************************************************/
 
     $.Params.root = $.Helpers.createPath("");
@@ -397,6 +403,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 				else result.push(source[i]);
             }
         } else {
+            if ($.Helpers.isEmptyEntry(source)) return result;
             Object.keys(source).forEach(function (key) {
                 if (target && key in target) {
                     if (Array.isArray(overrides) && overrides.includes(key) || overrides === key) {
@@ -421,6 +428,8 @@ ModLoader.Holders = ModLoader.Holders || {};
                             const diff = $.xdiff.diff3(source[key], original[key], target[key]);
                             result[key] = $.xdiff.patch(original[key], diff);
                         }
+                    } else if (key === "name") {
+                        result[key] = source[key].trim();
                     } else result[key] = source[key];
                 } else result[key] = source[key];
             });
