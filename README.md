@@ -53,4 +53,4 @@ Only the `id` and `value` fields are actually used.
 ## Known Issues
 - Mod loading is a bit slow. The first launch after changing the mod list can take up to a minute.
 - The plugin doesn't know how to solve ID conflicts. Mod authors have to agree on the ID their mods use.
-- The plugin relies on empty names to tell if an entry is empty itself or not. To have an entry without a name not be ignored, you have to add some spaces into the otherwise empty name. This is a small quirk that was introduced in favor of more complex, bug-prone solutions.
+- The plugin relies on empty names to tell if an entry is empty itself or not. To have an entry without a name not be ignored, you have to add some spaces into the otherwise empty name. This is a small quirk that was introduced in favor of more complex, bug-prone solutions to the issue of ignoring empty entries.
