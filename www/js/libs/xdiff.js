@@ -205,6 +205,14 @@ var exports = module.exports = function (deps, exports) {
         }
 
         function resolveAry(a, b) {
+            if (a[0] === b[0]) {
+                if (a[1] === 0 && b[1] !== 0) {
+                    return [a[0], b[1]].concat(a.slice(2), b.slice(2));
+                } else if (a[1] !== 0 && b[1] === 0) {
+                    return [a[0], a[1]].concat(b.slice(2), a.slice(2));
+                }
+            }
+
             return a;
         }
 
