@@ -1,8 +1,11 @@
 /*:
  * @author 1d51
- * @version 2.4.0
+ * @version 2.4.1
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
+
+var Imported = Imported || {};
+Imported.ModLoader = true;
 
 var ModLoader = ModLoader || {};
 
@@ -635,7 +638,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         }
     };
 
-    $.getSelectabe = function (mod) {
+    $.getSelectable = function (mod) {
         const modsPath = $.Params.modsPath
         const modFolders = $.Helpers.getFolders(modsPath);
         const mods = this.sortMods(modFolders).filter(m => this.getEnabled(m));
@@ -761,7 +764,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         return contents;
     };
 
-    if (Yanfly.Save != null) {
+    if (Imported.YEP_SaveCore) {
         Scene_File.prototype.createModConfirmWindow = function (lines) {
             this._modConfirmWindow = new Window_ModConfirm(lines);
             this._modConfirmWindow.setHandler("confirm", this.onModConfirmOk.bind(this));
@@ -893,7 +896,7 @@ Window_Mods.prototype.makeCommandList = function () {
     for (let i = 0; i < mods.length; i++) {
         const metadata = ModLoader.loadMetadata(mods[i]);
         const title = metadata.name + " [" + (metadata.version || "N/A") + "]"
-        const selectable = ModLoader.getSelectabe(mods[i]);
+        const selectable = ModLoader.getSelectable(mods[i]);
         this.addCommand(title, mods[i], selectable);
     }
 };
@@ -956,7 +959,7 @@ Window_Mods.prototype.cursorPagedown = function () {
 };
 
 Window_Mods.prototype.changeValue = function (symbol, value) {
-    if (!ModLoader.getSelectabe(symbol)) return;
+    if (!ModLoader.getSelectable(symbol)) return;
     let lastValue = ModLoader.getEnabled(symbol);
     if (lastValue !== value) {
         ModLoader.setEnabled(symbol, value);
