@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.4.1
+ * @version 2.4.2
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
