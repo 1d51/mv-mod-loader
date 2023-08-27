@@ -337,6 +337,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 
         this.setAdditions([...additions]);
         Object.keys(filePaths).forEach(function (key) {
+            const isConfig =  key.match(/state[a-z]+\.json/);
             const isPlugin = key.match(/plugins[^\/]*\.js/);
             if (isPlugin) $.Params.reboot = true;
 
@@ -353,7 +354,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                 const sourceFile = $.fs.readFileSync(filePaths[key][i]);
                 const sourceData = $.Helpers.parse(sourceFile, isPlugin);
 
-                if (key.split("/")[0].includes("data") || isPlugin) {
+                if (key.split("/")[0].includes("data") || isConfig || isPlugin) {
                     let reducedData = $.reduceData(sourceData, backupData);
                     if (!$.Helpers.strEq(sourceData, reducedData)) {
                         let reducedStr = JSON.stringify(reducedData);
