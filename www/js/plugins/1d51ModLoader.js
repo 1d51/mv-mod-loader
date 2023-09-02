@@ -337,7 +337,6 @@ ModLoader.Holders = ModLoader.Holders || {};
 
         this.setAdditions([...additions]);
         Object.keys(filePaths).forEach(function (key) {
-            const isConfig =  key.match(/state[a-z]+\.json/);
             const isPlugin = key.match(/plugins[^\/]*\.js/);
             if (isPlugin) $.Params.reboot = true;
 
@@ -354,19 +353,17 @@ ModLoader.Holders = ModLoader.Holders || {};
                 const sourceFile = $.fs.readFileSync(filePaths[key][i]);
                 const sourceData = $.Helpers.parse(sourceFile, isPlugin);
 
-                if (key.split("/")[0].includes("data") || isConfig || isPlugin) {
-                    let reducedData = $.reduceData(sourceData, backupData);
-                    if (!$.Helpers.strEq(sourceData, reducedData)) {
-                        let reducedStr = JSON.stringify(reducedData);
-                        if (isPlugin) reducedStr = "var $plugins =\n" + reducedStr;
-                        $.Helpers.deepWriteSync(filePaths[key][i], reducedStr);
-                    }
+                let reducedData = $.reduceData(sourceData, backupData);
+                if (!$.Helpers.strEq(sourceData, reducedData)) {
+                    let reducedStr = JSON.stringify(reducedData);
+                    if (isPlugin) reducedStr = "var $plugins =\n" + reducedStr;
+                    $.Helpers.deepWriteSync(filePaths[key][i], reducedStr);
+                }
 
-                    if (reducedData == null) continue;
+                if (reducedData == null) continue;
 
-                    const overrides = (metadata["overrides"] || {})[key];
-                    targetData = $.mergeData(reducedData, backupData, targetData, overrides);
-                } else targetData = JSON.parse(JSON.stringify(sourceData));
+                const overrides = (metadata["overrides"] || {})[key];
+                targetData = $.mergeData(reducedData, backupData, targetData, overrides);
             }
 
             const path = $.Params.root + key;
