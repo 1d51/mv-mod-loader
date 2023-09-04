@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.4.2
+ * @version 2.4.3
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -353,7 +353,9 @@ ModLoader.Holders = ModLoader.Holders || {};
                 const sourceFile = $.fs.readFileSync(filePaths[key][i]);
                 const sourceData = $.Helpers.parse(sourceFile, isPlugin);
 
-                let reducedData = $.reduceData(sourceData, backupData);
+                const track = metadata["track"] || false;
+                let reducedData = $.reduceData(sourceData, backupData, isPlugin && track);
+
                 if (!$.Helpers.strEq(sourceData, reducedData)) {
                     let reducedStr = JSON.stringify(reducedData);
                     if (isPlugin) reducedStr = "var $plugins =\n" + reducedStr;
@@ -364,6 +366,17 @@ ModLoader.Holders = ModLoader.Holders || {};
 
                 const overrides = (metadata["overrides"] || {})[key];
                 targetData = $.mergeData(reducedData, backupData, targetData, overrides);
+            }
+
+            if (isPlugin) {
+                for (let i = 0; i < targetData.length; i++) {
+                    const plugin = targetData[i];
+                    if (plugin["position"] != null) {
+                        const removed = targetData.splice(i, 1)[0];
+                        targetData.splice(plugin["position"], 0, removed);
+                        delete plugin["position"];
+                    }
+                }
             }
 
             const path = $.Params.root + key;
@@ -452,7 +465,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         return result;
     };
 
-    $.reduceData = function (source, original) {
+    $.reduceData = function (source, original, track) {
         if (original == null) return source;
         const ss = JSON.stringify(source);
         const os = JSON.stringify(original);
@@ -472,6 +485,10 @@ ModLoader.Holders = ModLoader.Holders || {};
                     if ($.Helpers.strEq(original[oi], source[i])) {
                         result.splice(ri, 1);
                     }
+                } else if (ri >= 0) {
+                    const position = result[ri]["position"];
+                    if (track && position == null)
+                        result[ri]["position"] = i;
                 }
             }
             result.filter(x => x)
@@ -631,7 +648,8 @@ ModLoader.Holders = ModLoader.Holders || {};
 				"version": "",
 				"dependencies": [],
 				"incompatible": [],
-				"overrides": {}
+				"overrides": {},
+                "track": false
             };
         }
     };
