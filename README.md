@@ -14,7 +14,7 @@ The plugin can handle working on top of an already modified game, but a clean in
 When the plugin is loaded into a game, a new menu option will be added to the start menu, called **mods**. In said menu, it's possible to enable and disable mods. It's also possible to reorder mods using **Page Up** and **Page Down** (usually a combination of the **FN** key and arrow keys). When the list of active mods or their order changes, the game will shut down and, on next launch, it'll load with said mods.
 
 ## Packaging Instructions
-The mod loader does not require any extra work on the side of either the mod makers or the users to function, but it's possible to provide it with some information about the mods to customize their behavior. A mod folder can include a `metadata.json` file with the following format:
+The mod loader does not generally require any extra work on the side of either the mod makers or the users to function, but it's possible to provide it with some information about the mods to customize their behavior. A mod folder can include a `metadata.json` file with the following format:
 ```
 {
   "name": "",
