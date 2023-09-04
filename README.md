@@ -19,6 +19,7 @@ The mod loader does not require any extra work on the side of either the mod mak
 {
   "name": "",
   "version": "",
+  "track": false,
   "dependencies": [{
     "name": "",
     "version": ""
@@ -33,6 +34,8 @@ The mod loader does not require any extra work on the side of either the mod mak
 }
 ```
 When defining a dependency or incompatibility, it's not necessary to specify a `version`. If it's not specified, the entry will apply to all versions of the mod with the given `name`. If the mod that we want to flag as either thing does not have a `metadata.json` file itself, we can refer to it by the name of its folder. There are some rare cases where the xdiff algorithm may fail for a particular file, or part of a file. For these, it's possible to tell the plugin to avoid the fancy algorithm and just do a simple replacement. The `overrides` field takes relative paths as keys, and either a boolean for a full replacement of the file, or an ID, or list of ID, to make a more fine-grained replacement. In the example above, it'd replace the CommonEvent with ID of 1, skipping the attempt at merging it.
+
+The `track` parameter can be set to true if you would like any plugins you include in your mod to be loaded in the order they were originally. When reducing mods, said order is generally lost for new plugins, and they are simply loaded last. That is, unless `track` is set to true. It's false by default because the algorithm is not very smart. If set to true, make sure you do so before having your mod reduced, or else it's likely your plugins will instead be loaded first, before any other plugins.
 
 You can also include a `config.json` file in the mod folder, which allows users to set the value of switches and variables, by editing said file. An easy way of allowing the configuration of a mod.
 ```
