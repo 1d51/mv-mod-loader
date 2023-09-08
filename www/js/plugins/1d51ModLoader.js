@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.4.3
+ * @version 2.4.4
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -84,10 +84,10 @@ ModLoader.Holders = ModLoader.Holders || {};
         }
     }
 
-    $.Helpers.hashCode = function (string) {
+    $.Helpers.hashCode = function (str) {
         let hash = 0;
-        for (let i = 0; i < string.length; i++) {
-            let code = string.charCodeAt(i);
+        for (let i = 0; i < str.length; i++) {
+            let code = str.charCodeAt(i);
             hash = ((hash << 5) - hash) + code;
             hash = hash & hash;
         }
@@ -109,11 +109,11 @@ ModLoader.Holders = ModLoader.Holders || {};
         return Array.from(new Set(matches.map(x => x.trim())));
     };
 
-    $.Helpers.move = function (array, index, delta) {
+    $.Helpers.move = function (arr, index, delta) {
         const newIndex = index + delta;
-        if (newIndex < 0 || newIndex === array.length) return;
+        if (newIndex < 0 || newIndex === arr.length) return;
         const indexes = [index, newIndex].sort((a, b) => a - b);
-        array.splice(indexes[0], 2, array[indexes[1]], array[indexes[0]]);
+        arr.splice(indexes[0], 2, arr[indexes[1]], arr[indexes[0]]);
     };
 
     $.Helpers.createPath = function (wrath) {
@@ -353,8 +353,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                 const sourceFile = $.fs.readFileSync(filePaths[key][i]);
                 const sourceData = $.Helpers.parse(sourceFile, isPlugin);
 
-                const track = metadata["track"] || false;
-                let reducedData = $.reduceData(sourceData, backupData, isPlugin && track);
+                const reducedData = $.reduceData(sourceData, backupData, isPlugin);
 
                 if (!$.Helpers.strEq(sourceData, reducedData)) {
                     let reducedStr = JSON.stringify(reducedData);
@@ -474,8 +473,10 @@ ModLoader.Holders = ModLoader.Holders || {};
             return null;
         }
 
-        const result = JSON.parse(ss);
+        let reduced = false;
+        let result = JSON.parse(ss);
         if (Array.isArray(original) && Array.isArray(source)) {
+            const positioned = source.some(obj => "position" in obj);
             for (let i = 0; i < source.length; i++) {
                 if (source[i] == null) continue;
                 const ri = result ? result.findIndex(x => x && $.Helpers.idEq(x, source[i])) : -1;
@@ -484,6 +485,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                 if (ri >= 0 && oi >= 0) {
                     if ($.Helpers.strEq(original[oi], source[i])) {
                         result.splice(ri, 1);
+                        reduced = true;
                     }
                 } else if (ri >= 0) {
                     const position = result[ri]["position"];
@@ -491,11 +493,20 @@ ModLoader.Holders = ModLoader.Holders || {};
                         result[ri]["position"] = i;
                 }
             }
-            result.filter(x => x)
+            if (!reduced && !positioned) {
+                result = result.map(obj => {
+                    if (obj == null) return obj;
+                    delete obj["position"];
+                    return obj;
+                });
+            }
+            result = result.filter(x => x);
         } else {
             Object.keys(source).forEach(function (key) {
                 if (original && key in original) {
-                    if ($.Helpers.strEq(original[key], source[key])) {
+                    if ($.Config.keyMerge.includes(key)) {
+                        result[key] = $.reduceData(source[key], original[key], false);
+                    } else if ($.Helpers.strEq(original[key], source[key])) {
                         delete result[key];
                     }
                 }
@@ -648,8 +659,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 				"version": "",
 				"dependencies": [],
 				"incompatible": [],
-				"overrides": {},
-                "track": false
+				"overrides": {}
             };
         }
     };
