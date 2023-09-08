@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.4.4
+ * @version 2.4.5
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -268,6 +268,8 @@ ModLoader.Holders = ModLoader.Holders || {};
     };
 
     $.Helpers.isEmptyEntry = function (entry) {
+        if (entry == null)
+            return true;
         if ("name" in entry)
             return !entry.name;
         return false;
@@ -476,7 +478,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         let reduced = false;
         let result = JSON.parse(ss);
         if (Array.isArray(original) && Array.isArray(source)) {
-            const positioned = source.some(obj => "position" in obj);
+            const positioned = source.some(obj => obj != null && "position" in obj);
             for (let i = 0; i < source.length; i++) {
                 if (source[i] == null) continue;
                 const ri = result ? result.findIndex(x => x && $.Helpers.idEq(x, source[i])) : -1;
