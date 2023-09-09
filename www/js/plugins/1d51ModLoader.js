@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.4.5
+ * @version 2.4.6
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -20,7 +20,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 (function ($) {
     $.Config.keyCombine = [];
     $.Config.keyAssign = ["parameters"];
-    $.Config.keyMerge = ["pages", "events", "terms"];
+    $.Config.keyMerge = ["inputs", "factors", "pages", "events", "terms"];
     $.Config.keySquash = ["armorTypes", "elements", "equipTypes", "skillTypes", "weaponTypes"];
     $.Config.keyXDiff = ["list", "note", "equips", "traits", "learnings", "effects"];
 
