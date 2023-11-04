@@ -10,6 +10,9 @@ A user can install mods by adding them inside the `www/mods` folder, independent
 
 The plugin can handle working on top of an already modified game, but a clean install is always recommended. Once the plugin is installed, there should be no need to install mods the usual way, instead of how it's explained here.
 
+### Merging Icon Sets
+This plugin has a very rudimentary icon set merging function. It's disabled by default, as it assumes that all the game's icons in `www/img/system/IconSet.png` take up the same space. That is, when one is placed on top of another, no part of the bottom one remains visible. If this applies to your game, you can enable this functionality by setting **$.Config.mergeIcons** to true, within the plugin's code.
+
 ## User Instructions
 When the plugin is loaded into a game, a new menu option will be added to the start menu, called **mods**. In said menu, it's possible to enable and disable mods. It's also possible to reorder mods using **Page Up** and **Page Down** (usually a combination of the **FN** key and arrow keys). When the list of active mods or their order changes, the game will shut down and, on next launch, it'll load with said mods.
 
