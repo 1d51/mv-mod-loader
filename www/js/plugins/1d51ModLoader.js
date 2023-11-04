@@ -25,7 +25,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Config.keyXDiff = ["list", "note", "equips", "traits", "learnings", "effects"];
 
     $.Config.backupSkip = [/diffs/];
-    $.Config.mergeIcons = false;
+    $.Config.mergeIcons = true;
 
     $.Helpers.strEq = function (left, right) {
         return JSON.stringify(left) === JSON.stringify(right);
