@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.5.0
+ * @version 2.5.1
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -25,6 +25,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Config.keyXDiff = ["list", "note", "equips", "traits", "learnings", "effects"];
 
     $.Config.backupSkip = [/diffs/];
+    $.Config.mergeIcons = false;
 
     $.Helpers.strEq = function (left, right) {
         return JSON.stringify(left) === JSON.stringify(right);
@@ -356,7 +357,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                     additions.add(originPath);
                 }
 
-                if (keyPath.match(/IconSet\.png/)) {
+                if ($.Config.mergeIcons && keyPath.match(/IconSet\.png/)) {
                     icons.push(files[j]);
                     continue;
                 }
