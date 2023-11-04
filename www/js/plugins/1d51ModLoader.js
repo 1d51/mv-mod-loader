@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.4.6
+ * @version 2.5.0
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -17,7 +17,7 @@ ModLoader.Params = ModLoader.Params || {};
 ModLoader.Config = ModLoader.Config || {};
 ModLoader.Holders = ModLoader.Holders || {};
 
-(function ($) {
+(async function ($) {
     $.Config.keyCombine = [];
     $.Config.keyAssign = ["parameters"];
     $.Config.keyMerge = ["inputs", "factors", "pages", "events", "terms"];
@@ -163,9 +163,9 @@ ModLoader.Holders = ModLoader.Holders || {};
         return files;
     };
 
-    $.Helpers.deepWriteSync = function (path, file) {
+    $.Helpers.deepWriteSync = function (path, file, options = null) {
         this.ensureDirectoryExistence(path);
-        $.fs.writeFileSync(path, file);
+        $.fs.writeFileSync(path, file, options);
     };
 
     $.Helpers.ensureDirectoryExistence = function (path) {
@@ -274,6 +274,34 @@ ModLoader.Holders = ModLoader.Holders || {};
             return !entry.name;
         return false;
     };
+    
+    $.Helpers.overlayImages = async function (paths) {
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+
+        for (let i = 0; i < paths.length; i++) {
+            const file = $.fs.readFileSync(paths[i]);
+            const url = `data:image/png;base64,${file.toString('base64')}`;
+
+            const img = await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img)
+                img.onerror = reject
+                img.src = url
+            })
+
+            if (img != null) {
+                if (img.width > canvas.width)
+                    canvas.width = img.width;
+                if (img.height > canvas.height)
+                    canvas.height = img.height;
+                context.drawImage(img, 0, 0);
+            }
+        }
+
+        const urlData = canvas.toDataURL("png", 1);
+        return urlData.replace(/^data:image\/png;base64,/, "");
+    }
 
     /************************************************************************************/
 
@@ -282,10 +310,12 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Params.backupsPath = $.Params.root + "backups/";
     $.Params.diffsPath = $.Params.root + "diffs/";
 
+    $.Params.iconsPath = $.Params.root + "img/system/IconSet.png";
+
     $.Params.reboot = false;
     $.Params.badFolder = false;
 
-    $.readMods = function () {
+    $.readMods = async function () {
         $.Helpers.ensureDirectoryExistence($.Params.modsPath);
         $.Helpers.ensureDirectoryExistence($.Params.backupsPath);
         $.Helpers.ensureDirectoryExistence($.Params.diffsPath);
@@ -310,8 +340,9 @@ ModLoader.Holders = ModLoader.Holders || {};
             }
         }
 
-        additions = new Set();
+        const icons = [];
         const filePaths = {};
+        additions = new Set();
         for (let i = 0; i < mods.length; i++) {
             const modPath = $.Params.modsPath + mods[i] + "/www";
             if (!$.fs.existsSync(modPath)) continue;
@@ -321,9 +352,13 @@ ModLoader.Holders = ModLoader.Holders || {};
                 const originPath = $.Params.root + keyPath;
                 $.backup(files[j]);
 
-
                 if (!$.fs.existsSync(originPath)) {
                     additions.add(originPath);
+                }
+
+                if (keyPath.match(/IconSet\.png/)) {
+                    icons.push(files[j]);
+                    continue;
                 }
 
                 if (keyPath.match(/diffs/) || !keyPath.match(/(\.json)|(plugins[^\/]*\.js)/)) {
@@ -335,6 +370,12 @@ ModLoader.Holders = ModLoader.Holders || {};
                 if (!filePaths[keyPath]) filePaths[keyPath] = [];
                 filePaths[keyPath].push(files[j]);
             }
+        }
+
+        if (icons.length > 0) {
+            const paths = [$.Params.iconsPath].concat(icons);
+            const file = await $.Helpers.overlayImages(paths);
+            $.Helpers.deepWriteSync($.Params.iconsPath, file, "base64");
         }
 
         this.setAdditions([...additions]);
@@ -838,7 +879,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         };
     }
 
-    $.readMods();
+    await $.readMods();
     if ($.Params.reboot) {
         nw.Window.get().reload();
     }
