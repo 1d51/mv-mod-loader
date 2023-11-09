@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.5.1
+ * @version 2.5.2
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -8,6 +8,7 @@ var Imported = Imported || {};
 Imported.ModLoader = true;
 
 var ModLoader = ModLoader || {};
+var Mods = Mods || {};
 
 ModLoader.fs = require("fs");
 ModLoader.xdiff = require("./js/libs/xdiff");
@@ -99,7 +100,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         const a = arr.concat();
         for (let i = 0; i < a.length; ++i) {
             for (let j = i + 1; j < a.length; ++j) {
-                if (this.strEq(a[i], a[j])) a.splice(j--, 1);
+                if ($.Helpers.strEq(a[i], a[j])) a.splice(j--, 1);
             }
         }
         return a;
@@ -134,7 +135,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         for (const file of filesInPath) {
             const absolute = path + "/" + file;
             if ($.fs.statSync(absolute).isDirectory()) {
-                files.push(...this.getFilesRecursively(absolute));
+                files.push(...$.Helpers.getFilesRecursively(absolute));
             } else files.push(absolute);
         }
         return files;
@@ -165,7 +166,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     };
 
     $.Helpers.deepWriteSync = function (path, file, options = null) {
-        this.ensureDirectoryExistence(path);
+        $.Helpers.ensureDirectoryExistence(path);
         $.fs.writeFileSync(path, file, options);
     };
 
@@ -175,7 +176,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 
         const directory = path.substring(0, index);
         if ($.fs.existsSync(directory)) return;
-        this.ensureDirectoryExistence(directory);
+        $.Helpers.ensureDirectoryExistence(directory);
         $.fs.mkdirSync(directory);
     };
 
@@ -304,6 +305,14 @@ ModLoader.Holders = ModLoader.Holders || {};
         return urlData.replace(/^data:image\/png;base64,/, "");
     }
 
+    $.Helpers.camelize = function (str) {
+        return str.replace(/[-_\s]+(.)?/g, function (match, chr) {
+            return chr ? chr.toUpperCase() : '';
+        }).replace(/^./, function (match) {
+            return match.toUpperCase();
+        });
+    }
+
     /************************************************************************************/
 
     $.Params.root = $.Helpers.createPath("");
@@ -323,7 +332,9 @@ ModLoader.Holders = ModLoader.Holders || {};
 
         const modFolders = $.Helpers.getFolders($.Params.modsPath);
         const mods = $.sortMods(modFolders).filter(m => $.getEnabled(m));
-        if (this.checkLast(mods)) return;
+        $.setModHash(mods);
+
+        if ($.checkLast(mods)) return;
 
         const files = $.Helpers.getFilesRecursively($.Params.backupsPath);
         for (let i = 0; i < files.length; i++) {
@@ -334,7 +345,7 @@ ModLoader.Holders = ModLoader.Holders || {};
             $.Helpers.deepWriteSync(originPath, backupFile);
         }
 
-        let additions = this.getAdditions();
+        let additions = $.getAdditions();
         for (let i = 0; i < additions.length; i++) {
             if ($.fs.existsSync(additions[i])) {
                 $.fs.unlinkSync(additions[i]);
@@ -379,7 +390,7 @@ ModLoader.Holders = ModLoader.Holders || {};
             $.Helpers.deepWriteSync($.Params.iconsPath, file, "base64");
         }
 
-        this.setAdditions([...additions]);
+        $.setAdditions([...additions]);
         Object.keys(filePaths).forEach(function (key) {
             const isPlugin = key.match(/plugins[^\/]*\.js/);
             if (isPlugin) $.Params.reboot = true;
@@ -428,7 +439,7 @@ ModLoader.Holders = ModLoader.Holders || {};
             $.Helpers.deepWriteSync(path, targetStr);
         });
 
-        this.setLast(mods);
+        $.setLast(mods);
     };
 
     $.backup = function (path) {
@@ -581,28 +592,28 @@ ModLoader.Holders = ModLoader.Holders || {};
     };
 
     $.getAdditions = function () {
-        const schema = this.loadSchema();
+        const schema = $.loadSchema();
         return schema["additions"] || [];
     };
 
     $.setAdditions = function (additions) {
-        const schema = this.loadSchema();
+        const schema = $.loadSchema();
         schema["additions"] = additions || [];
-        this.writeSchema(schema);
+        $.writeSchema(schema);
     };
 
     $.getEnabled = function (symbol) {
-        const schema = this.loadSchema();
+        const schema = $.loadSchema();
         return schema["enabled"].includes(symbol);
     };
 
     $.setEnabled = function (symbol, value) {
-        const schema = this.loadSchema();
+        const schema = $.loadSchema();
 
         if (!value) {
-            const metadata = this.loadMetadata(symbol);
+            const metadata = $.loadMetadata(symbol);
             for (let i = 0; i < schema["enabled"].length; i++) {
-                const aux = this.loadMetadata(schema["enabled"][i]);
+                const aux = $.loadMetadata(schema["enabled"][i]);
                 const names = aux["dependencies"].map(d => d["name"]);
                 if (names.includes(metadata["name"])) {
                     if (schema["enabled"].includes(schema["enabled"][i])) {
@@ -620,18 +631,18 @@ ModLoader.Holders = ModLoader.Holders || {};
             schema["enabled"].splice(index, 1);
         }
 
-        this.writeSchema(schema);
+        $.writeSchema(schema);
     };
 
     $.sortMods = function (mods) {
-        let order = this.loadSchema()["order"];
+        let order = $.loadSchema()["order"];
         order = order.filter(m => mods.includes(m));
         for (let i = 0; i < mods.length; i++) {
             if (!order.includes(mods[i])) {
                 let inserted = false;
                 for (let j = 0; j < order.length; j++) {
-                    const mm = this.loadMetadata(mods[i]);
-                    const om = this.loadMetadata(order[j]);
+                    const mm = $.loadMetadata(mods[i]);
+                    const om = $.loadMetadata(order[j]);
                     const names = om["dependencies"].map(d => d["name"]);
                     if (names.includes(mm["name"])) {
                         order.splice(j, 0, mods[i]);
@@ -655,8 +666,8 @@ ModLoader.Holders = ModLoader.Holders || {};
 
         const position = index + move;
         if (position > 0 && position < mods.length) {
-            const im = this.loadMetadata(mods[index]);
-            const pm = this.loadMetadata(mods[position]);
+            const im = $.loadMetadata(mods[index]);
+            const pm = $.loadMetadata(mods[position]);
 
             if (move >= 0) {
                 const names = pm["dependencies"].map(d => d["name"]);
@@ -668,15 +679,15 @@ ModLoader.Holders = ModLoader.Holders || {};
         }
 
         $.Helpers.move(mods, index, move);
-        const schema = this.loadSchema();
+        const schema = $.loadSchema();
         schema["order"] = mods;
-        this.writeSchema(schema);
+        $.writeSchema(schema);
     };
 
     $.checkLast = function (mods) {
-        const schema = this.loadSchema();
+        const schema = $.loadSchema();
         const titles = mods.map(mod => {
-            const metadata = this.loadMetadata(mod);
+            const metadata = $.loadMetadata(mod);
             return metadata.name + " [" + metadata.version + "]"
         });
         const old = JSON.parse(JSON.stringify(schema["last"]));
@@ -684,12 +695,12 @@ ModLoader.Holders = ModLoader.Holders || {};
     };
 
     $.setLast = function (mods) {
-        const schema = this.loadSchema();
+        const schema = $.loadSchema();
         schema["last"] = mods.map(mod => {
-            const metadata = this.loadMetadata(mod);
+            const metadata = $.loadMetadata(mod);
             return metadata.name + " [" + metadata.version + "]"
         });
-        this.writeSchema(schema);
+        $.writeSchema(schema);
     };
 
     $.loadMetadata = function (mod) {
@@ -711,9 +722,9 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.getSelectable = function (mod) {
         const modsPath = $.Params.modsPath
         const modFolders = $.Helpers.getFolders(modsPath);
-        const mods = this.sortMods(modFolders).filter(m => this.getEnabled(m));
-        const meta = mods.map(m => this.loadMetadata(m));
-        const metadata = this.loadMetadata(mod);
+        const mods = $.sortMods(modFolders).filter(m => $.getEnabled(m));
+        const meta = mods.map(m => $.loadMetadata(m));
+        const metadata = $.loadMetadata(mod);
         for (let i = 0; i < meta.length; i++) {
             const incompatible = meta[i]["incompatible"] || [];
             for (let j = 0; j < incompatible.length; j++) {
@@ -790,6 +801,15 @@ ModLoader.Holders = ModLoader.Holders || {};
                 $.Params.badFolder = true;
                 return;
             }
+        }
+    }
+
+    $.setModHash = function(mods) {
+        for (let i = 0; i < mods.length; i++) {
+            const meta = $.loadMetadata(mods[i]);
+            const camel = $.Helpers.camelize(meta["name"]);
+            Mods[meta["name"]] = meta["version"] || true;
+            Mods[camel] = meta["version"] || true;
         }
     }
 
