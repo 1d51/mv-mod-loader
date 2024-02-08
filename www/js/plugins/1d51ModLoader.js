@@ -22,7 +22,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Config.keyCombine = [];
     $.Config.keyAssign = ["parameters"];
     $.Config.keyMerge = ["inputs", "factors", "pages", "events", "terms"];
-    $.Config.keySquash = ["armorTypes", "elements", "equipTypes", "skillTypes", "weaponTypes"];
+    $.Config.keySquash = ["armorTypes", "elements", "equipTypes", "skillTypes", "weaponTypes", "switches", "variables"];
     $.Config.keyXDiff = ["list", "note", "equips", "traits", "learnings", "effects"];
 
     $.Config.backupSkip = [/diffs/];
