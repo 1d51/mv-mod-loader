@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.5.2
+ * @version 2.5.3
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -22,7 +22,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Config.keyCombine = [];
     $.Config.keyAssign = ["parameters"];
     $.Config.keyMerge = ["inputs", "factors", "pages", "events", "terms"];
-    $.Config.keySquash = ["armorTypes", "elements", "equipTypes", "skillTypes", "weaponTypes"];
+    $.Config.keySquash = ["armorTypes", "elements", "equipTypes", "skillTypes", "weaponTypes", "switches", "variables"];
     $.Config.keyXDiff = ["list", "note", "equips", "traits", "learnings", "effects"];
 
     $.Config.backupSkip = [/diffs/];
@@ -32,58 +32,26 @@ ModLoader.Holders = ModLoader.Holders || {};
         return JSON.stringify(left) === JSON.stringify(right);
     };
 
-    $.Helpers.idPresent = function(obj) {
-        return obj != null && ("id" in obj || "name" in obj);
+    $.Helpers.idPresent = function(obj, id) {
+        return obj != null && id in obj;
     }
 
-    $.Helpers.idEq = function (left, right) {
+    $.Helpers.idEq = function (left, right, id) {
         if (left != null && right != null) {
-            if ("id" in left && "id" in right) {
-                return left["id"] === right["id"];
-            } else if ("name" in left && "name" in right) {
-                return left["name"] === right["name"];
-            }
-        } else if (left != null) {
-            if ("id" in left) {
-                return left["id"] === right;
-            } else if ("name" in left) {
-                return left["name"] === right;
-            }
-        } else if (right != null) {
-            if ("id" in right) {
-                return right["id"] === left;
-            } else if ("name" in right) {
-                return right["name"] === left;
+            if (id in left && id in right) {
+                return left[id] === right[id];
             }
         }
-
-        return left === right;
+        return false;
     };
 
-    $.Helpers.idIncl = function (arr, obj) {
-        if (obj != null) {
-            if ("id" in obj) {
-                if (Array.isArray(arr)) {
-                    return arr.includes(obj["id"]);
-                } else {
-                    return arr === obj["id"];
-                }
-            } else if ("name" in obj) {
-                if (Array.isArray(arr)) {
-                    return arr.includes(obj["name"]);
-                } else {
-                    return arr === obj["name"];
-                }
-            }
+    $.Helpers.idIncl = function (arr, obj, id) {
+        if (obj != null && id in obj) {
+            if (Array.isArray(arr)) {
+                return arr.includes(obj[id]);
+            } else return arr === obj[id];
         }
-
-        if (Array.isArray(arr)) {
-            return arr.includes(obj);
-        } else if (typeof arr === "string") {
-            return arr.includes(obj);
-        } else {
-            return arr === obj;
-        }
+        return false;
     }
 
     $.Helpers.hashCode = function (str) {
@@ -393,6 +361,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         $.setAdditions([...additions]);
         Object.keys(filePaths).forEach(function (key) {
             const isPlugin = key.match(/plugins[^\/]*\.js/);
+            const identifier = isPlugin ? "name" : "id";
             if (isPlugin) $.Params.reboot = true;
 
             const backupPath = $.Params.backupsPath + key;
@@ -408,7 +377,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                 const sourceFile = $.fs.readFileSync(filePaths[key][i]);
                 const sourceData = $.Helpers.parse(sourceFile, isPlugin);
 
-                const reducedData = $.reduceData(sourceData, backupData, isPlugin);
+                const reducedData = $.reduceData(sourceData, backupData, identifier, isPlugin);
 
                 if (!$.Helpers.strEq(sourceData, reducedData)) {
                     let reducedStr = JSON.stringify(reducedData);
@@ -419,7 +388,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                 if (reducedData == null) continue;
 
                 const overrides = (metadata["overrides"] || {})[key];
-                targetData = $.mergeData(reducedData, backupData, targetData, overrides);
+                targetData = $.mergeData(reducedData, backupData, targetData, identifier, overrides);
             }
 
             if (isPlugin) {
@@ -459,7 +428,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         }
     };
 
-    $.mergeData = function (source, original, target, overrides = null) {
+    $.mergeData = function (source, original, target, identifier, overrides) {
         if (typeof overrides == "boolean" && overrides) return source;
         if (target == null) return source;
 
@@ -468,20 +437,20 @@ ModLoader.Holders = ModLoader.Holders || {};
         if (Array.isArray(source) && Array.isArray(target)) {
             for (let i = 0; i < source.length; i++) {
                 if (source[i] == null) continue;
-                if (!$.Helpers.idPresent(source[i])) {
-                    if (target.length > i) result[i] = $.mergeData(source[i], primordial[i], target[i]);
-					else result.push(source[i]);
+                if (!$.Helpers.idPresent(source[i], identifier)) {
+                    if (target.length > i) result[i] = $.mergeData(source[i], primordial[i], target[i], identifier, overrides);
+                    else result.push(source[i]);
                     continue;
                 }
-                const pi = primordial ? primordial.findIndex(x => x && $.Helpers.idEq(x, source[i])) : -1;
-                const ti = target ? target.findIndex(x => x && $.Helpers.idEq(x, source[i])) : -1;
-                if ($.Helpers.idIncl(overrides, source[i])) {
+                const pi = primordial ? primordial.findIndex(x => x && $.Helpers.idEq(x, source[i], identifier)) : -1;
+                const ti = target ? target.findIndex(x => x && $.Helpers.idEq(x, source[i], identifier)) : -1;
+                if ($.Helpers.idIncl(overrides, source[i], identifier)) {
                     if (ti >= 0) result[ti] = source[i];
                     else result.push(source[i]);
                     continue;
                 }
-                if (ti >= 0) result[ti] = $.mergeData(source[i], primordial[pi], target[ti]);
-				else result.push(source[i]);
+                if (ti >= 0) result[ti] = $.mergeData(source[i], primordial[pi], target[ti], identifier, overrides);
+                else result.push(source[i]);
             }
         } else {
             if ($.Helpers.isEmptyEntry(source)) return result;
@@ -497,7 +466,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                     } else if ($.Config.keyAssign.includes(key)) {
                         result[key] = $.Helpers.assign(source[key], primordial[key], target[key]);
                     } else if ($.Config.keyMerge.includes(key)) {
-                        result[key] = $.mergeData(source[key], primordial[key], target[key]);
+                        result[key] = $.mergeData(source[key], primordial[key], target[key], identifier, overrides);
                     } else if ($.Config.keySquash.includes(key)) {
                         result[key] = $.Helpers.squash(source[key], primordial[key], target[key]);
                     } else if ($.Config.keyXDiff.includes(key)) {
@@ -519,7 +488,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         return result;
     };
 
-    $.reduceData = function (source, original, track) {
+    $.reduceData = function (source, original, identifier, track) {
         if (original == null) return source;
         const ss = JSON.stringify(source);
         const os = JSON.stringify(original);
@@ -534,8 +503,8 @@ ModLoader.Holders = ModLoader.Holders || {};
             const positioned = source.some(obj => obj != null && "position" in obj);
             for (let i = 0; i < source.length; i++) {
                 if (source[i] == null) continue;
-                const ri = result ? result.findIndex(x => x && $.Helpers.idEq(x, source[i])) : -1;
-                const oi = original ? original.findIndex(x => x && $.Helpers.idEq(x, source[i])) : -1;
+                const ri = result ? result.findIndex(x => x && $.Helpers.idEq(x, source[i], identifier)) : -1;
+                const oi = original ? original.findIndex(x => x && $.Helpers.idEq(x, source[i], identifier)) : -1;
 
                 if (ri >= 0 && oi >= 0) {
                     if ($.Helpers.strEq(original[oi], source[i])) {
@@ -560,7 +529,7 @@ ModLoader.Holders = ModLoader.Holders || {};
             Object.keys(source).forEach(function (key) {
                 if (original && key in original) {
                     if ($.Config.keyMerge.includes(key)) {
-                        result[key] = $.reduceData(source[key], original[key], false);
+                        result[key] = $.reduceData(source[key], original[key], identifier, track);
                     } else if ($.Helpers.strEq(original[key], source[key])) {
                         delete result[key];
                     }
