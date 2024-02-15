@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.5.3
+ * @version 2.5.4
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -26,6 +26,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Config.keyXDiff = ["list", "note", "equips", "traits", "learnings", "effects"];
 
     $.Config.backupSkip = [/diffs/];
+    $.Config.usePlaceholders = false;
     $.Config.mergeIcons = false;
 
     $.Helpers.strEq = function (left, right) {
@@ -867,6 +868,34 @@ ModLoader.Holders = ModLoader.Holders || {};
                 $.Holders.onActionLoad.call(this);
             }
         };
+
+        if ($.Config.usePlaceholders) {
+            $.Holders.drawFace = Window_SaveInfo.prototype.drawFace
+            Window_SaveInfo.prototype.drawFace = function(name, index, x, y, w, h) {
+                const facesPath = $.Params.root + "img/faces/";
+                if ($.fs.existsSync(facesPath + name + ".png")) {
+                    $.Holders.drawFace.call(this, name, index, x, y, w, h);
+                } else $.Holders.drawFace.call(this, "Placeholder", index, x, y, w, h);
+            };
+
+            $.Holders.drawCharacter = Window_SaveInfo.prototype.drawCharacter;
+            Window_SaveInfo.prototype.drawCharacter = function(name, index, x, y) {
+                const charactersPath = $.Params.root + "img/characters/";
+                if ($.fs.existsSync(charactersPath + name + ".png")) {
+                    $.Holders.drawCharacter.call(this, name, index, x, y);
+                } else $.Holders.drawCharacter.call(this, "!Placeholder", index, x, y);
+            };
+
+            Scene_File.prototype.create = function() {
+                Scene_MenuBase.prototype.create.call(this);
+                // DataManager.loadAllSavefileImages();
+                this.createHelpWindow();
+                this.createListWindow();
+                this.createActionWindow();
+                this.createInfoWindow();
+                this.createConfirmWindow();
+            };
+        }
     }
 
     await $.readMods();
