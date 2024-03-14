@@ -82,6 +82,19 @@ var exports = module.exports = function (deps, exports) {
     let equal = (deps && deps.equal) || _equal;
     exports = exports || {};
 
+    exports.lss = function (a, b) {
+        let l = Math.min(a.length, b.length);
+        let s = [];
+
+        for (let i = 0; i < l; i++) {
+            if (a[i] === b[i]) {
+                s.push(a[i]);
+            } else break;
+        }
+
+        return s;
+    }
+
     exports.lcs = function () {
         let args = getArgs(arguments);
         while (args.length > 2) {

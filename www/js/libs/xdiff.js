@@ -206,15 +206,17 @@ var exports = module.exports = function (deps, exports) {
 
         function resolveAry(a, b) {
             if (a[0] === b[0]) {
+                const lss = adiff.lss(b.slice(2), a.slice(2));
+
                 if (a[1] === b[1]) {
                     // Both start at the same index, and delete the same number.
-                    return [a[0], a[1]].concat(a.slice(2), b.slice(2));
+                    return [a[0], a[1]].concat(lss, b.slice(2 + lss.length), a.slice(2 + lss.length));
                 } else if (a[1] === 0 && b[1] !== 0) {
                     // Both start at the same index, and only one deletes something.
-                    return [a[0], b[1]].concat(a.slice(2), b.slice(2));
+                    return [a[0], b[1]].concat(lss, b.slice(2 + lss.length), a.slice(2 + lss.length));
                 } else if (a[1] !== 0 && b[1] === 0) {
                     // Both start at the same index, and only one deletes something.
-                    return [a[0], a[1]].concat(b.slice(2), a.slice(2));
+                    return [a[0], a[1]].concat(lss, b.slice(2 + lss.length), a.slice(2 + lss.length));
                 }
             }
 
