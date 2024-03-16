@@ -677,10 +677,25 @@ ModLoader.Holders = ModLoader.Holders || {};
         const metadataPath = $.Params.modsPath + mod + "/metadata.json";
         if ($.fs.existsSync(metadataPath)) {
             const metadataFile = $.fs.readFileSync(metadataPath);
-            return JSON.parse(metadataFile);
+            let metadata = JSON.parse(metadataFile);
+
+            if (metadata.name == null)
+                metadata.name = mod;
+            if (metadata.track == null)
+                metadata.track = false;
+            if (metadata.version == null)
+                metadata.version = "";
+            if (metadata.dependencies == null)
+                metadata.dependencies = [];
+            if (metadata.incompatible == null)
+                metadata.incompatible = [];
+            if (metadata.overrides == null)
+                metadata.overrides = {};
+            return metadata;
         } else {
             return {
                 "name": mod,
+                "track": false,
 				"version": "",
 				"dependencies": [],
 				"incompatible": [],
