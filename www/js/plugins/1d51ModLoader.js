@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.5.6
+ * @version 2.6.0
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -28,6 +28,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Config.backupSkip = [];
     $.Config.usePlaceholders = false;
     $.Config.mergeIcons = false;
+    $.Config.minRandomId = 999999;
 
     $.Helpers.strEq = function (left, right) {
         return JSON.stringify(left) === JSON.stringify(right);
@@ -63,6 +64,10 @@ ModLoader.Holders = ModLoader.Holders || {};
             hash = hash & hash;
         }
         return hash;
+    };
+
+    $.Helpers.randomId = function () {
+        return Math.floor(Math.random() * (Number.MAX_SAFE_INTEGER - $.Config.minRandomId + 1)) + $.Config.minRandomId;
     };
 
     $.Helpers.dedup = function (arr) {
@@ -272,7 +277,6 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Params.root = $.Helpers.createPath("");
     $.Params.modsPath = $.Params.root + "mods/";
     $.Params.backupsPath = $.Params.root + "backups/";
-
     $.Params.iconsPath = $.Params.root + "img/system/IconSet.png";
 
     $.Params.reboot = false;
@@ -354,6 +358,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 
             let targetData = backupFile ? $.Helpers.parse(backupFile, isPlugin) : null;
 
+            const mappings = {};
             for (let i = 0; i < filePaths[key].length; i++) {
                 const mod = $.Helpers.modName(filePaths[key][i]);
                 const metadata = $.loadMetadata(mod);
@@ -372,7 +377,8 @@ ModLoader.Holders = ModLoader.Holders || {};
                 if (reducedData == null) continue;
 
                 const overrides = (metadata["overrides"] || {})[key];
-                targetData = $.mergeData(reducedData, backupData, targetData, identifier, overrides);
+                const randomizedData = $.randomizeData(reducedData, backupData, metadata, mappings, key, identifier);
+                targetData = $.mergeData(randomizedData, backupData, targetData, identifier, overrides);
             }
 
             if (isPlugin) {
@@ -524,6 +530,45 @@ ModLoader.Holders = ModLoader.Holders || {};
         return result;
     };
 
+    $.randomizeData = function (source, original, metadata, mappings, key, identifier) {
+        if (original == null || identifier !== "id") return source;
+        const isMap = key.match(/Map[0-9]*\.json/);
+        if (!isMap) return source;
+
+        if (mappings[key] == null) mappings[key] = {};
+        if (mappings[key].events == null) mappings[key].events = [];
+        const copy = JSON.parse(JSON.stringify(source));
+
+        for (let i = 0; i < copy.events.length; i++) {
+            if (copy.events[i] == null) continue;
+            const og = original.events.find(x => x != null && x.id === copy.events[i].id);
+            if (og != null) continue;
+
+            const mapping = mappings[key].events.find((x) => {
+                return x.oldId === copy.events[i].id && metadata.dependencies.find((y) => {
+                    return y.name === x.name && y.version === x.version;
+                })
+            });
+
+            if (mapping == null) {
+                const newId = metadata.randomize
+                    ? $.Helpers.randomId()
+                    : source.events[i].id;
+                copy.events[i].id = newId;
+                mappings[key].events.push({
+                    "name": metadata.name,
+                    "version": metadata.version,
+                    "oldId": source.events[i].id,
+                    "newId": newId
+                })
+            } else {
+                copy.events[i].id = mapping.newId;
+            }
+        }
+
+        return copy;
+    };
+
     $.loadSchema = function () {
         const schemaPath = $.Params.root + "schema.json";
         if ($.fs.existsSync(schemaPath)) {
@@ -664,8 +709,6 @@ ModLoader.Holders = ModLoader.Holders || {};
 
             if (metadata.name == null)
                 metadata.name = mod;
-            if (metadata.track == null)
-                metadata.track = false;
             if (metadata.version == null)
                 metadata.version = "";
             if (metadata.dependencies == null)
@@ -674,15 +717,20 @@ ModLoader.Holders = ModLoader.Holders || {};
                 metadata.incompatible = [];
             if (metadata.overrides == null)
                 metadata.overrides = {};
+            if (metadata.randomize == null)
+                metadata.randomize = false;
+            if (metadata.track == null)
+                metadata.track = false;
             return metadata;
         } else {
             return {
                 "name": mod,
-                "track": false,
-				"version": "",
-				"dependencies": [],
-				"incompatible": [],
-				"overrides": {}
+                "version": "",
+                "dependencies": [],
+                "incompatible": [],
+                "overrides": {},
+                "randomize": false,
+                "track": false
             };
         }
     };
