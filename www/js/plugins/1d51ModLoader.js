@@ -25,7 +25,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Config.keySquash = ["armorTypes", "elements", "equipTypes", "skillTypes", "weaponTypes", "switches", "variables"];
     $.Config.keyXDiff = ["list", "note", "equips", "traits", "learnings", "effects"];
 
-    $.Config.backupSkip = [/diffs/];
+    $.Config.backupSkip = [];
     $.Config.usePlaceholders = false;
     $.Config.mergeIcons = false;
 
@@ -176,30 +176,15 @@ ModLoader.Holders = ModLoader.Holders || {};
     };
 
     $.Helpers.arrDiff = function (source, original, target) {
-        const sh = $.Helpers.hashCode(JSON.stringify(source));
-        const oh = $.Helpers.hashCode(JSON.stringify(original));
-        const th = $.Helpers.hashCode(JSON.stringify(target));
+        if ($.Helpers.strEq(target, original)) return source;
+        if ($.Helpers.strEq(source, original)) return target;
 
-        if (th === oh) return source;
-        if (sh === oh) return target;
+        const ss = source.map((obj) => JSON.stringify(obj));
+        const os = original.map((obj) => JSON.stringify(obj));
+        const ts = target.map((obj) => JSON.stringify(obj));
 
-        let ss = source.map((obj) => JSON.stringify(obj));
-        let os = original.map((obj) => JSON.stringify(obj));
-        let ts = target.map((obj) => JSON.stringify(obj));
-
-        const xx = sh.toString() + oh.toString() + th.toString();
-        const path = $.Params.diffsPath + xx + ".json";
-        let diff = null;
-
-        if ($.fs.existsSync(path)) {
-            const diffFile = $.fs.readFileSync(path);
-            diff = JSON.parse(diffFile);
-        } else {
-            diff = $.xdiff.diff3(ss, os, ts);
-            if (diff == null) return original;
-
-            $.Helpers.deepWriteSync(path, JSON.stringify(diff));
-        }
+        let diff = $.xdiff.diff3(ss, os, ts);
+        if (diff == null) return original;
 
         const rs = $.xdiff.patch(os, diff);
         return rs.map((str) => JSON.parse(str));
@@ -287,7 +272,6 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Params.root = $.Helpers.createPath("");
     $.Params.modsPath = $.Params.root + "mods/";
     $.Params.backupsPath = $.Params.root + "backups/";
-    $.Params.diffsPath = $.Params.root + "diffs/";
 
     $.Params.iconsPath = $.Params.root + "img/system/IconSet.png";
 
@@ -297,7 +281,6 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.readMods = async function () {
         $.Helpers.ensureDirectoryExistence($.Params.modsPath);
         $.Helpers.ensureDirectoryExistence($.Params.backupsPath);
-        $.Helpers.ensureDirectoryExistence($.Params.diffsPath);
 
         const modFolders = $.Helpers.getFolders($.Params.modsPath);
         const mods = $.sortMods(modFolders).filter(m => $.getEnabled(m));
@@ -342,7 +325,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                     continue;
                 }
 
-                if (keyPath.match(/diffs/) || !keyPath.match(/(\.json)|(plugins[^\/]*\.js)/)) {
+                if (!keyPath.match(/(\.json)|(plugins[^\/]*\.js)/)) {
                     const sourceFile = $.fs.readFileSync(files[j]);
                     $.Helpers.deepWriteSync(originPath, sourceFile);
                     continue;
