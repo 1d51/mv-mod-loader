@@ -2,7 +2,6 @@
 A mod loader for RPG Maker MV games. It uses the xdiff library implemented by [Dominic Tarr](https://github.com/dominictarr), optimized and with several fixes, to combine complex JSON files (think CommonEvents.json), and some heuristics to handle simpler files (think Items.json). By making a backup of the game's original files on first launch after install, it then merges the changes made by the different mods on bootup, and overrides the game's files, allowing users to easily change the mods they have installed. It also compresses mods so that they only contain relevant changes in their files.
 
 ## Install Instructions
-For the game developer, adding this plugin to their game is done as they would with any other plugin. The included libraries are required. To allow modders to easily coordinate with one another, it's recommended to use something like this [Google Sheet](https://docs.google.com/spreadsheets/d/15YZfWihvax0tU8Hzte8y-wU1b83DBtJDsY7YADFiCTw/edit?usp=sharing) (courtesy of Gummiel#0001), where they'll be able to keep track of what ID are reserved.
 
 For a modder to add support to a game that does not come with this plugin pre-installed, they will have to distribute some extra, game-dependant files, such as `plugins.js`.
 
