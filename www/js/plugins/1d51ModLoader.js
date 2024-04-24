@@ -69,6 +69,10 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Helpers.cpyRmv = function (arr, prop) {
         const result = [];
         for (let i = 0; i < arr.length; i++) {
+            if (arr[i] == null) {
+                result.push(arr[i]);
+                continue;
+            }
             const copy = { ...arr[i] };
             if (copy.hasOwnProperty(prop)) {
                 delete copy[prop];
@@ -287,6 +291,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Helpers.indent = function (arr) {
         let indent = 0;
         for (let i = 0; i < arr.length; i++) {
+            if (arr[i] == null) continue;
             arr[i]["indent"] = indent;
             if (arr[i]["code"] === 111) indent++;
             else if (arr[i]["code"] === 411) indent++;
@@ -486,7 +491,8 @@ ModLoader.Holders = ModLoader.Holders || {};
                         if (typeof source[key] === "string" || source[key] instanceof String) {
                             result[key] = $.Helpers.tagDiff(source[key], primordial[key], target[key]);
                         } else if (Array.isArray(source[key])) {
-                            const indented = source[key][0].hasOwnProperty("indent");
+                            const indented = source[key][0] != null &&
+                                source[key][0].hasOwnProperty("indent");
                             const looseSource = $.Helpers.cpyRmv(source[key], "indent");
                             const loosePrimordial = $.Helpers.cpyRmv(primordial[key], "indent");
                             const looseTarget = $.Helpers.cpyRmv(target[key], "indent");
