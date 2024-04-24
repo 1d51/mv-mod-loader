@@ -171,6 +171,14 @@ var exports = module.exports = function (deps, exports) {
         const _a = exports.diff(o, a) || [];
         const _b = exports.diff(o, b) || [];
 
+        function srt(a, asc = true) {
+            for (let i = 0; i < a.length; i++) {
+                if (a[i][0] === "splice") {
+                    a[i][2].sort((a, b) => asc ? a[0] - b[0] : b[0] - a[0]);
+                }
+            }
+        }
+
         function cmp(a, b) {
             if (!b) return 1;
             const p = a[1], q = b[1];
@@ -249,8 +257,9 @@ var exports = module.exports = function (deps, exports) {
                 if (c < 0) res.push(b[j--]);
                 if (!c) {
                     const r = resolve(a[i], b[j]);
-                    j--, i--;
-                    res.push(r);
+                    if (equal(r, a[i])) j--;
+                    else if (equal(r, b[j])) i--;
+                    else res.push(r); i--, j--;
                 }
             }
             while (~i) res.push(a[i--]);
@@ -261,13 +270,12 @@ var exports = module.exports = function (deps, exports) {
         _a.sort(cmp);
         _b.sort(cmp);
 
-        const m = merge(_a, _b, isPrefix, resolve);
-        for (let i = 0; i < m.length; i++) {
-            if (m[i][0] === "splice") {
-                m[i][2].sort((a, b) => b[0] - a[0]);
-            }
-        }
+        srt(_a, true);
+        srt(_b, true);
 
+        const m = merge(_a, _b, isPrefix, resolve);
+
+        srt(m, false);
         return m.length ? m : null;
     }
 

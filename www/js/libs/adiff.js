@@ -182,7 +182,10 @@ var exports = module.exports = function (deps, exports) {
                     cur.push(b[i++]);
                 }
                 if (i >= m) {
-                    if (a.length > b.length) cur[1] += a.length - b.length; else if (a.length < b.length) cur.push(...b.slice(a.length));
+                    if (a.length > b.length)
+                        cur[1] += a.length - b.length;
+                    else if (a.length < b.length)
+                        cur.push(...b.slice(a.length));
                 }
                 patch.push(cur);
             }
