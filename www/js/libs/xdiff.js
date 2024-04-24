@@ -56,7 +56,7 @@ function _equal(a, b) {
         }
 
         for (let i in a) {
-            if (!equal(a[i], b[i])) {
+            if (!_equal(a[i], b[i])) {
                 return false;
             }
         }
@@ -75,7 +75,7 @@ function _equal(a, b) {
         for (let i in aKeys) {
             const key = aKeys[i];
 
-            if (!equal(a[key], b[key])) {
+            if (!_equal(a[key], b[key])) {
                 return false;
             }
         }

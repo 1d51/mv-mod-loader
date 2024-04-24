@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.6.1
+ * @version 2.7.0
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -65,6 +65,18 @@ ModLoader.Holders = ModLoader.Holders || {};
         }
         return hash;
     };
+
+    $.Helpers.cpyRmv = function (arr, prop) {
+        const result = [];
+        for (let i = 0; i < arr.length; i++) {
+            const copy = { ...arr[i] };
+            if (copy.hasOwnProperty(prop)) {
+                delete copy[prop];
+            }
+            result.push(copy);
+        }
+        return result;
+    }
 
     $.Helpers.randomId = function () {
         return Math.floor(Math.random() * (Number.MAX_SAFE_INTEGER - $.Config.minRandomId + 1)) + $.Config.minRandomId;
@@ -272,6 +284,17 @@ ModLoader.Holders = ModLoader.Holders || {};
         });
     }
 
+    $.Helpers.indent = function (arr) {
+        let indent = 0;
+        for (let i = 0; i < arr.length; i++) {
+            arr[i]["indent"] = indent;
+            if (arr[i]["code"] === 111) indent++;
+            else if (arr[i]["code"] === 411) indent++;
+            else if (arr[i]["code"] === 0) indent--;
+        }
+        return arr;
+    }
+
     /************************************************************************************/
 
     $.Params.root = $.Helpers.createPath("");
@@ -463,7 +486,13 @@ ModLoader.Holders = ModLoader.Holders || {};
                         if (typeof source[key] === "string" || source[key] instanceof String) {
                             result[key] = $.Helpers.tagDiff(source[key], primordial[key], target[key]);
                         } else if (Array.isArray(source[key])) {
-                            result[key] = $.Helpers.arrDiff(source[key], primordial[key], target[key]);
+                            const indented = source[key][0].hasOwnProperty("indent");
+                            const looseSource = $.Helpers.cpyRmv(source[key], "indent");
+                            const loosePrimordial = $.Helpers.cpyRmv(primordial[key], "indent");
+                            const looseTarget = $.Helpers.cpyRmv(target[key], "indent");
+                            let res = $.Helpers.arrDiff(looseSource, loosePrimordial, looseTarget);
+                            if (indented) res = $.Helpers.indent(res);
+                            result[key] = res;
                         } else {
                             const diff = $.xdiff.diff3(source[key], primordial[key], target[key]);
                             result[key] = $.xdiff.patch(primordial[key], diff);
