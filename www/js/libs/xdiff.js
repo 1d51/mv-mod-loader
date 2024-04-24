@@ -202,6 +202,8 @@ var exports = module.exports = function (deps, exports) {
         }
 
         function cmpSp(a, b) {
+            if (a == null) return -1;
+            else if (b == null) return 1;
             if (a[0] === b[0]) return 0;
 
             function max(k) {
@@ -213,6 +215,9 @@ var exports = module.exports = function (deps, exports) {
         }
 
         function resolveAry(a, b) {
+            if (a == null) return b;
+            if (b == null) return a;
+
             if (a[0] === b[0]) {
                 const lss = adiff.lss(b.slice(2), a.slice(2));
 
@@ -232,6 +237,9 @@ var exports = module.exports = function (deps, exports) {
         }
 
         function resolve(a, b) {
+            if (a == null) return b;
+            if (b == null) return a;
+
             if (a[1].length === b[1].length) {
                 if (a[0] === b[0]) {
                     if (a[0] === 'splice') {
@@ -259,7 +267,10 @@ var exports = module.exports = function (deps, exports) {
                     const r = resolve(a[i], b[j]);
                     if (equal(r, a[i])) j--;
                     else if (equal(r, b[j])) i--;
-                    else res.push(r); i--, j--;
+                    else {
+                        res.push(r);
+                        i--, j--;
+                    }
                 }
             }
             while (~i) res.push(a[i--]);
