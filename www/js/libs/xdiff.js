@@ -171,6 +171,9 @@ var exports = module.exports = function (deps, exports) {
         const _a = exports.diff(o, a) || [];
         const _b = exports.diff(o, b) || [];
 
+        let conflicts = 0;
+        let fatal = 0;
+
         function srt(a, asc = true) {
             for (let i = 0; i < a.length; i++) {
                 if (a[i][0] === "splice") {
@@ -218,6 +221,7 @@ var exports = module.exports = function (deps, exports) {
             if (a == null) return b;
             if (b == null) return a;
 
+            conflicts++;
             if (a[0] === b[0]) {
                 const lss = adiff.lss(b.slice(2), a.slice(2));
 
@@ -233,6 +237,7 @@ var exports = module.exports = function (deps, exports) {
                 }
             }
 
+            fatal++;
             return a;
         }
 
@@ -287,7 +292,12 @@ var exports = module.exports = function (deps, exports) {
         const m = merge(_a, _b, isPrefix, resolve);
 
         srt(m, false);
-        return m.length ? m : null;
+
+        return {
+            "diff": m.length ? m : null,
+            "conflicts": conflicts,
+            "fatal": fatal
+        }
     }
 
     return exports;

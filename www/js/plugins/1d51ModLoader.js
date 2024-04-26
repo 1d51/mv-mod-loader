@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.6.1
+ * @version 2.7.0
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -171,30 +171,6 @@ ModLoader.Holders = ModLoader.Holders || {};
         return JSON.parse(str);
     };
 
-    $.Helpers.tagDiff = function (source, original, target) {
-        const sa = $.Helpers.untag(source);
-        const oa = $.Helpers.untag(original);
-        const ta = $.Helpers.untag(target);
-
-        const ma = $.Helpers.arrDiff(sa, oa, ta);
-        return ma.join("\n");
-    };
-
-    $.Helpers.arrDiff = function (source, original, target) {
-        if ($.Helpers.strEq(target, original)) return source;
-        if ($.Helpers.strEq(source, original)) return target;
-
-        const ss = source.map((obj) => JSON.stringify(obj));
-        const os = original.map((obj) => JSON.stringify(obj));
-        const ts = target.map((obj) => JSON.stringify(obj));
-
-        let diff = $.xdiff.diff3(ss, os, ts);
-        if (diff == null) return original;
-
-        const rs = $.xdiff.patch(os, diff);
-        return rs.map((str) => JSON.parse(str));
-    };
-
     $.Helpers.append = function (target, input) {
         const text = JSON.stringify(input);
         const ts = target.map((obj) => JSON.stringify(obj));
@@ -281,13 +257,15 @@ ModLoader.Holders = ModLoader.Holders || {};
 
     $.Params.reboot = false;
     $.Params.badFolder = false;
+    $.Params.conflicts = 0;
+    $.Params.fatal = 0;
 
     $.readMods = async function () {
         $.Helpers.ensureDirectoryExistence($.Params.modsPath);
         $.Helpers.ensureDirectoryExistence($.Params.backupsPath);
 
         const modFolders = $.Helpers.getFolders($.Params.modsPath);
-        const mods = $.sortMods(modFolders).filter(m => $.getEnabled(m));
+        const mods = $.sortMods(modFolders).filter(m => $.getModEnabled(m));
         $.setModHash(mods);
 
         if ($.checkLast(mods)) return;
@@ -399,6 +377,8 @@ ModLoader.Holders = ModLoader.Holders || {};
         });
 
         $.setLast(mods);
+        $.setConflicts($.Params.conflicts)
+        $.setFatal($.Params.fatal)
     };
 
     $.backup = function (path) {
@@ -461,11 +441,11 @@ ModLoader.Holders = ModLoader.Holders || {};
                         result[key] = $.Helpers.squash(source[key], primordial[key], target[key]);
                     } else if ($.Config.keyXDiff.includes(key)) {
                         if (typeof source[key] === "string" || source[key] instanceof String) {
-                            result[key] = $.Helpers.tagDiff(source[key], primordial[key], target[key]);
+                            result[key] = $.tagDiff(source[key], primordial[key], target[key]);
                         } else if (Array.isArray(source[key])) {
-                            result[key] = $.Helpers.arrDiff(source[key], primordial[key], target[key]);
+                            result[key] = $.arrDiff(source[key], primordial[key], target[key]);
                         } else {
-                            const diff = $.xdiff.diff3(source[key], primordial[key], target[key]);
+                            const diff = $.xdiff.diff3(source[key], primordial[key], target[key])["diff"];
                             result[key] = $.xdiff.patch(primordial[key], diff);
                         }
                     } else if (key === "name") {
@@ -569,6 +549,33 @@ ModLoader.Holders = ModLoader.Holders || {};
         return copy;
     };
 
+    $.tagDiff = function (source, original, target) {
+        const sa = $.Helpers.untag(source);
+        const oa = $.Helpers.untag(original);
+        const ta = $.Helpers.untag(target);
+
+        const ma = $.arrDiff(sa, oa, ta);
+        return ma.join("\n");
+    };
+
+    $.arrDiff = function (source, original, target) {
+        if ($.Helpers.strEq(target, original)) return source;
+        if ($.Helpers.strEq(source, original)) return target;
+
+        const ss = source.map((obj) => JSON.stringify(obj));
+        const os = original.map((obj) => JSON.stringify(obj));
+        const ts = target.map((obj) => JSON.stringify(obj));
+
+        let patch = $.xdiff.diff3(ss, os, ts);
+        if (patch["diff"] == null) return original;
+
+        $.Params.conflicts += patch["conflicts"];
+        $.Params.fatal += patch["fatal"];
+
+        const rs = $.xdiff.patch(os, patch["diff"]);
+        return rs.map((str) => JSON.parse(str));
+    };
+
     $.loadSchema = function () {
         const schemaPath = $.Params.root + "schema.json";
         if ($.fs.existsSync(schemaPath)) {
@@ -579,7 +586,9 @@ ModLoader.Holders = ModLoader.Holders || {};
                 "additions": [],
                 "enabled": [],
 				"order": [],
-				"last": []
+				"last": [],
+                "conflicts": 0,
+                "fatal": 0
             };
         }
     };
@@ -600,12 +609,67 @@ ModLoader.Holders = ModLoader.Holders || {};
         $.writeSchema(schema);
     };
 
-    $.getEnabled = function (symbol) {
+    $.getEnabled = function () {
+        const schema = $.loadSchema();
+        return schema["enabled"] || [];
+    };
+
+    $.setEnabled = function (enabled) {
+        const schema = $.loadSchema();
+        schema["enabled"] = enabled || [];
+        $.writeSchema(schema);
+    };
+
+    $.getOrder = function () {
+        const schema = $.loadSchema();
+        return schema["order"] || [];
+    };
+
+    $.setOrder = function (order) {
+        const schema = $.loadSchema();
+        schema["order"] = order || [];
+        $.writeSchema(schema);
+    };
+
+    $.getLast = function () {
+        const schema = $.loadSchema();
+        return schema["last"] || [];
+    };
+
+    $.setLast = function (last) {
+        const schema = $.loadSchema();
+        schema["last"] = last || [];
+        $.writeSchema(schema);
+    };
+
+    $.getConflicts = function () {
+        const schema = $.loadSchema();
+        return schema["conflicts"] || 0;
+    };
+
+    $.setConflicts = function (conflicts) {
+        const schema = $.loadSchema();
+        schema["conflicts"] = conflicts || 0;
+        $.writeSchema(schema);
+    };
+
+    $.getFatal = function () {
+        const schema = $.loadSchema();
+        return schema["fatal"] || 0;
+    };
+
+    $.setFatal = function (fatal) {
+        const schema = $.loadSchema();
+        schema["fatal"] = fatal || 0;
+        $.writeSchema(schema);
+    };
+
+    $.getModEnabled = function (symbol) {
         const schema = $.loadSchema();
         return schema["enabled"].includes(symbol);
     };
 
-    $.setEnabled = function (symbol, value) {
+    $.setModEnabled = function (symbol, value) {
         const schema = $.loadSchema();
 
         if (!value) {
@@ -738,7 +802,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.getSelectable = function (mod) {
         const modsPath = $.Params.modsPath
         const modFolders = $.Helpers.getFolders(modsPath);
-        const mods = $.sortMods(modFolders).filter(m => $.getEnabled(m));
+        const mods = $.sortMods(modFolders).filter(m => $.getModEnabled(m));
         const meta = mods.map(m => $.loadMetadata(m));
         const metadata = $.loadMetadata(mod);
         for (let i = 0; i < meta.length; i++) {
@@ -789,7 +853,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.configGame = function () {
         const modsPath = ModLoader.Params.modsPath;
         const modFolders = $.Helpers.getFolders(modsPath);
-        const mods = ModLoader.sortMods(modFolders).filter(m => ModLoader.getEnabled(m));
+        const mods = ModLoader.sortMods(modFolders).filter(m => ModLoader.getModEnabled(m));
         for (let i = 0; i < mods.length; i++) {
             const config = ModLoader.loadConfig(mods[i]);
             const switches = config["switches"] || [];
@@ -841,6 +905,26 @@ ModLoader.Holders = ModLoader.Holders || {};
     Scene_Load.prototype.onLoadSuccess = function () {
         $.Holders.onLoadSuccess.call(this);
         $.configGame();
+    };
+
+    $.Holders.create = Scene_Title.prototype.create;
+    Scene_Title.prototype.create = function() {
+        $.Holders.create.call(this);
+        if ($.getEnabled().length === 0) return;
+        const conflicts = $.getConflicts();
+        const fatal = $.getFatal();
+
+        const bitmap = new Bitmap(Graphics.width, Graphics.height)
+        bitmap.drawText("MV Mod Loader v2.6.1", 15, Graphics.height - (conflicts > 0 ? 60 : 30), Graphics.width, 6, "left");
+
+        if (conflicts > 0) {
+            bitmap.textColor = "#ff0000"
+            const text = "Found " + conflicts + " conflicts (" + fatal + " fatal)";
+            bitmap.drawText(text, 15, Graphics.height - 30, Graphics.width, 6, "left");
+        }
+
+        const sprite = new Sprite(bitmap);
+        this.addChild(sprite);
     };
 
     $.Holders.makeCommandList = Window_TitleCommand.prototype.makeCommandList;
@@ -934,7 +1018,6 @@ ModLoader.Holders = ModLoader.Holders || {};
 
             Scene_File.prototype.create = function() {
                 Scene_MenuBase.prototype.create.call(this);
-                // DataManager.loadAllSavefileImages();
                 this.createHelpWindow();
                 this.createListWindow();
                 this.createActionWindow();
@@ -1051,7 +1134,7 @@ Window_Mods.prototype.statusWidth = function () {
 
 Window_Mods.prototype.statusText = function (index) {
     let symbol = this.commandSymbol(index);
-    let value = ModLoader.getEnabled(symbol);
+    let value = ModLoader.getModEnabled(symbol);
     return this.booleanStatusText(value);
 };
 
@@ -1062,7 +1145,7 @@ Window_Mods.prototype.booleanStatusText = function (value) {
 Window_Mods.prototype.processOk = function () {
     let index = this.index();
     let symbol = this.commandSymbol(index);
-    let value = ModLoader.getEnabled(symbol);
+    let value = ModLoader.getModEnabled(symbol);
     this.changeValue(symbol, !value);
 };
 
@@ -1094,9 +1177,9 @@ Window_Mods.prototype.cursorPagedown = function () {
 
 Window_Mods.prototype.changeValue = function (symbol, value) {
     if (!ModLoader.getSelectable(symbol)) return;
-    let lastValue = ModLoader.getEnabled(symbol);
+    let lastValue = ModLoader.getModEnabled(symbol);
     if (lastValue !== value) {
-        ModLoader.setEnabled(symbol, value);
+        ModLoader.setModEnabled(symbol, value);
         this.redrawItem(this.findSymbol(symbol));
         SoundManager.playCursor();
     }
