@@ -915,7 +915,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         const fatal = $.getFatal();
 
         const bitmap = new Bitmap(Graphics.width, Graphics.height)
-        bitmap.drawText("MV Mod Loader v2.6.1", 15, Graphics.height - (conflicts > 0 ? 60 : 30), Graphics.width, 6, "left");
+        bitmap.drawText("MV Mod Loader v2.7.0", 15, Graphics.height - (conflicts > 0 ? 60 : 30), Graphics.width, 6, "left");
 
         if (conflicts > 0) {
             bitmap.textColor = "#ff0000"
