@@ -261,6 +261,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 
     $.Params.currentMod = null;
     $.Params.currentFile = null;
+    $.Params.currentId = null;
 
     $.readMods = async function () {
         $.Helpers.ensureDirectoryExistence($.Params.modsPath);
@@ -404,6 +405,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.mergeData = function (source, original, target, identifier, overrides) {
         if (typeof overrides == "boolean" && overrides) return source;
         if (target == null) return source;
+        $.Params.currentId = null;
 
         const result = JSON.parse(JSON.stringify(target));
         const primordial = original ? original : target;
@@ -446,6 +448,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                         if (typeof source[key] === "string" || source[key] instanceof String) {
                             result[key] = $.tagDiff(source[key], primordial[key], target[key]);
                         } else if (Array.isArray(source[key])) {
+                            $.Params.currentId = source[identifier];
                             result[key] = $.arrDiff(source[key], primordial[key], target[key]);
                         } else {
                             const diff = $.xdiff.diff3(source[key], primordial[key], target[key])["diff"];
@@ -576,6 +579,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         $.Params.conflicts.push({
             "mod": $.Params.currentMod,
             "file": $.Params.currentFile,
+            "id": $.Params.currentId,
             "items": conflicts.map((obj) => {
                 for (let i = 2; i < obj["source"].length; i++) {
                     obj["source"][i] = JSON.parse(obj["source"][i]);
