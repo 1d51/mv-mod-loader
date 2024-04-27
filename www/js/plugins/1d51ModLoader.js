@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.7.0
+ * @version 2.7.1
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -257,8 +257,10 @@ ModLoader.Holders = ModLoader.Holders || {};
 
     $.Params.reboot = false;
     $.Params.badFolder = false;
-    $.Params.conflicts = 0;
-    $.Params.fatal = 0;
+    $.Params.conflicts = [];
+
+    $.Params.currentMod = null;
+    $.Params.currentFile = null;
 
     $.readMods = async function () {
         $.Helpers.ensureDirectoryExistence($.Params.modsPath);
@@ -329,6 +331,7 @@ ModLoader.Holders = ModLoader.Holders || {};
             const isPlugin = key.match(/plugins[^\/]*\.js/);
             const identifier = isPlugin ? "name" : "id";
             if (isPlugin) $.Params.reboot = true;
+            $.Params.currentFile = key;
 
             const backupPath = $.Params.backupsPath + key;
             const backupFile = $.fs.existsSync(backupPath) ? $.fs.readFileSync(backupPath) : null;
@@ -340,6 +343,7 @@ ModLoader.Holders = ModLoader.Holders || {};
             for (let i = 0; i < filePaths[key].length; i++) {
                 const mod = $.Helpers.modName(filePaths[key][i]);
                 const metadata = $.loadMetadata(mod);
+                $.Params.currentMod = mod;
 
                 const sourceFile = $.fs.readFileSync(filePaths[key][i]);
                 const sourceData = $.Helpers.parse(sourceFile, isPlugin);
@@ -378,7 +382,6 @@ ModLoader.Holders = ModLoader.Holders || {};
 
         $.setLast(mods);
         $.setConflicts($.Params.conflicts)
-        $.setFatal($.Params.fatal)
     };
 
     $.backup = function (path) {
@@ -568,9 +571,21 @@ ModLoader.Holders = ModLoader.Holders || {};
 
         let patch = $.xdiff.diff3(ss, os, ts);
         if (patch["diff"] == null) return original;
+        const conflicts = patch["conflicts"].map(obj => JSON.parse(JSON.stringify(obj)));
 
-        $.Params.conflicts += patch["conflicts"];
-        $.Params.fatal += patch["fatal"];
+        $.Params.conflicts.push({
+            "mod": $.Params.currentMod,
+            "file": $.Params.currentFile,
+            "items": conflicts.map((obj) => {
+                for (let i = 2; i < obj["source"].length; i++) {
+                    obj["source"][i] = JSON.parse(obj["source"][i]);
+                }
+                for (let i = 2; i < obj["target"].length; i++) {
+                    obj["target"][i] = JSON.parse(obj["target"][i]);
+                }
+                return obj;
+            })
+        });
 
         const rs = $.xdiff.patch(os, patch["diff"]);
         return rs.map((str) => JSON.parse(str));
@@ -587,8 +602,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                 "enabled": [],
 				"order": [],
 				"last": [],
-                "conflicts": 0,
-                "fatal": 0
+                "conflicts": [],
             };
         }
     };
@@ -644,23 +658,12 @@ ModLoader.Holders = ModLoader.Holders || {};
 
     $.getConflicts = function () {
         const schema = $.loadSchema();
-        return schema["conflicts"] || 0;
+        return schema["conflicts"] || [];
     };
 
     $.setConflicts = function (conflicts) {
         const schema = $.loadSchema();
-        schema["conflicts"] = conflicts || 0;
-        $.writeSchema(schema);
-    };
-
-    $.getFatal = function () {
-        const schema = $.loadSchema();
-        return schema["fatal"] || 0;
-    };
-
-    $.setFatal = function (fatal) {
-        const schema = $.loadSchema();
-        schema["fatal"] = fatal || 0;
+        schema["conflicts"] = conflicts || [];
         $.writeSchema(schema);
     };
 
@@ -912,14 +915,18 @@ ModLoader.Holders = ModLoader.Holders || {};
         $.Holders.create.call(this);
         if ($.getEnabled().length === 0) return;
         const conflicts = $.getConflicts();
-        const fatal = $.getFatal();
+
+        const itemCount = conflicts.reduce((acc, conflict) => acc + conflict.items.length, 0);
+        const fatalCount = conflicts.reduce((acc, conflict) => {
+            return acc + conflict.items.filter(item => item.fatal).length;
+        }, 0);
 
         const bitmap = new Bitmap(Graphics.width, Graphics.height)
-        bitmap.drawText("MV Mod Loader v2.7.0", 15, Graphics.height - (conflicts > 0 ? 60 : 30), Graphics.width, 6, "left");
+        bitmap.drawText("MV Mod Loader v2.7.1", 15, Graphics.height - (itemCount > 0 ? 60 : 30), Graphics.width, 6, "left");
 
-        if (conflicts > 0) {
+        if (itemCount > 0) {
             bitmap.textColor = "#ff0000"
-            const text = "Found " + conflicts + " conflicts (" + fatal + " fatal)";
+            const text = "Found " + itemCount + " conflicts (" + fatalCount + " fatal)";
             bitmap.drawText(text, 15, Graphics.height - 30, Graphics.width, 6, "left");
         }
 

@@ -171,8 +171,7 @@ var exports = module.exports = function (deps, exports) {
         const _a = exports.diff(o, a) || [];
         const _b = exports.diff(o, b) || [];
 
-        let conflicts = 0;
-        let fatal = 0;
+        const conflicts = [];
 
         function srt(a, asc = true) {
             for (let i = 0; i < a.length; i++) {
@@ -221,7 +220,12 @@ var exports = module.exports = function (deps, exports) {
             if (a == null) return b;
             if (b == null) return a;
 
-            conflicts++;
+            conflicts.push({
+                "source": a,
+                "target": b,
+                "fatal": false,
+            });
+
             if (a[0] === b[0]) {
                 const lss = adiff.lss(b.slice(2), a.slice(2));
 
@@ -237,7 +241,8 @@ var exports = module.exports = function (deps, exports) {
                 }
             }
 
-            fatal++;
+            conflicts[conflicts.length - 1]["fatal"] = true;
+
             return a;
         }
 
@@ -296,7 +301,6 @@ var exports = module.exports = function (deps, exports) {
         return {
             "diff": m.length ? m : null,
             "conflicts": conflicts,
-            "fatal": fatal
         }
     }
 
