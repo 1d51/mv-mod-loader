@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.7.1
+ * @version 2.7.2
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -261,6 +261,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 
     $.Params.currentMod = null;
     $.Params.currentFile = null;
+    $.Params.currentKey = null;
     $.Params.currentId = null;
 
     $.readMods = async function () {
@@ -403,15 +404,21 @@ ModLoader.Holders = ModLoader.Holders || {};
     };
 
     $.mergeData = function (source, original, target, identifier, overrides) {
-        if (typeof overrides == "boolean" && overrides) return source;
+        if (typeof overrides == "boolean" && overrides) {
+            $.Params.conflicts = $.Params.conflicts.filter(x => {
+                return x["file"] !== $.Params.currentFile;
+            });
+            return source;
+        }
+
         if (target == null) return source;
-        $.Params.currentId = null;
 
         const result = JSON.parse(JSON.stringify(target));
         const primordial = original ? original : target;
         if (Array.isArray(source) && Array.isArray(target)) {
             for (let i = 0; i < source.length; i++) {
                 if (source[i] == null) continue;
+                $.Params.currentId = source[i][identifier];
                 if (!$.Helpers.idPresent(source[i], identifier)) {
                     if (target.length > i) result[i] = $.mergeData(source[i], primordial[i], target[i], identifier, overrides);
                     else result.push(source[i]);
@@ -420,6 +427,10 @@ ModLoader.Holders = ModLoader.Holders || {};
                 const pi = primordial ? primordial.findIndex(x => x && $.Helpers.idEq(x, source[i], identifier)) : -1;
                 const ti = target ? target.findIndex(x => x && $.Helpers.idEq(x, source[i], identifier)) : -1;
                 if ($.Helpers.idIncl(overrides, source[i], identifier)) {
+                    $.Params.conflicts = $.Params.conflicts.filter(x => {
+                        return x["file"] !== $.Params.currentFile ||
+                            x["id"] !== $.Params.currentId;
+                    });
                     if (ti >= 0) result[ti] = source[i];
                     else result.push(source[i]);
                     continue;
@@ -429,9 +440,15 @@ ModLoader.Holders = ModLoader.Holders || {};
             }
         } else {
             if ($.Helpers.isEmptyEntry(source)) return result;
+            $.Params.currentId = source[identifier];
             Object.keys(source).forEach(function (key) {
+                $.Params.currentKey = key;
                 if (target && key in target) {
                     if (Array.isArray(overrides) && overrides.includes(key) || overrides === key) {
+                        $.Params.conflicts = $.Params.conflicts.filter(x => {
+                            return x["file"] !== $.Params.currentFile ||
+                                x["key"] !== $.Params.currentKey;
+                        });
                         result[key] = source[key];
                     } else if ($.Config.keyCombine.includes(key)) {
                         const aux = result[key].concat(source[key]);
@@ -448,7 +465,6 @@ ModLoader.Holders = ModLoader.Holders || {};
                         if (typeof source[key] === "string" || source[key] instanceof String) {
                             result[key] = $.tagDiff(source[key], primordial[key], target[key]);
                         } else if (Array.isArray(source[key])) {
-                            $.Params.currentId = source[identifier];
                             result[key] = $.arrDiff(source[key], primordial[key], target[key]);
                         } else {
                             const diff = $.xdiff.diff3(source[key], primordial[key], target[key])["diff"];
@@ -576,20 +592,23 @@ ModLoader.Holders = ModLoader.Holders || {};
         if (patch["diff"] == null) return original;
         const conflicts = patch["conflicts"].map(obj => JSON.parse(JSON.stringify(obj)));
 
-        $.Params.conflicts.push({
-            "mod": $.Params.currentMod,
-            "file": $.Params.currentFile,
-            "id": $.Params.currentId,
-            "items": conflicts.map((obj) => {
-                for (let i = 2; i < obj["source"].length; i++) {
-                    obj["source"][i] = JSON.parse(obj["source"][i]);
-                }
-                for (let i = 2; i < obj["target"].length; i++) {
-                    obj["target"][i] = JSON.parse(obj["target"][i]);
-                }
-                return obj;
-            })
-        });
+        if (conflicts.length > 0) {
+            $.Params.conflicts.push({
+                "mod": $.Params.currentMod,
+                "file": $.Params.currentFile,
+                "key": $.Params.currentKey,
+                "id": $.Params.currentId,
+                "items": conflicts.map((obj) => {
+                    for (let i = 2; i < obj["source"].length; i++) {
+                        obj["source"][i] = JSON.parse(obj["source"][i]);
+                    }
+                    for (let i = 2; i < obj["target"].length; i++) {
+                        obj["target"][i] = JSON.parse(obj["target"][i]);
+                    }
+                    return obj;
+                })
+            });
+        }
 
         const rs = $.xdiff.patch(os, patch["diff"]);
         return rs.map((str) => JSON.parse(str));
@@ -606,7 +625,6 @@ ModLoader.Holders = ModLoader.Holders || {};
                 "enabled": [],
 				"order": [],
 				"last": [],
-                "conflicts": [],
             };
         }
     };
@@ -657,17 +675,6 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.setLast = function (last) {
         const schema = $.loadSchema();
         schema["last"] = last || [];
-        $.writeSchema(schema);
-    };
-
-    $.getConflicts = function () {
-        const schema = $.loadSchema();
-        return schema["conflicts"] || [];
-    };
-
-    $.setConflicts = function (conflicts) {
-        const schema = $.loadSchema();
-        schema["conflicts"] = conflicts || [];
         $.writeSchema(schema);
     };
 
@@ -770,6 +777,34 @@ ModLoader.Holders = ModLoader.Holders || {};
             return metadata.name + " [" + metadata.version + "]"
         });
         $.writeSchema(schema);
+    };
+
+    $.loadLog = function () {
+        const logPath = $.Params.root + "log.json";
+        if ($.fs.existsSync(logPath)) {
+            const logFile = $.fs.readFileSync(logPath);
+            return JSON.parse(logFile);
+        } else {
+            return {
+                "conflicts": [],
+            };
+        }
+    };
+
+    $.writeLog = function (log) {
+        const logPath = $.Params.root + "log.json";
+        $.Helpers.deepWriteSync(logPath, JSON.stringify(log));
+    };
+
+    $.getConflicts = function () {
+        const log = $.loadLog();
+        return log["conflicts"] || [];
+    };
+
+    $.setConflicts = function (conflicts) {
+        const log = $.loadLog();
+        log["conflicts"] = conflicts || [];
+        $.writeLog(log);
     };
 
     $.loadMetadata = function (mod) {
@@ -926,7 +961,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         }, 0);
 
         const bitmap = new Bitmap(Graphics.width, Graphics.height)
-        bitmap.drawText("MV Mod Loader v2.7.1", 15, Graphics.height - (itemCount > 0 ? 60 : 30), Graphics.width, 6, "left");
+        bitmap.drawText("MV Mod Loader v2.7.2", 15, Graphics.height - (itemCount > 0 ? 60 : 30), Graphics.width, 6, "left");
 
         if (itemCount > 0) {
             bitmap.textColor = "#ff0000"
