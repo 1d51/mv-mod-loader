@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.7.2
+ * @version 2.7.3
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -413,6 +413,7 @@ ModLoader.Holders = ModLoader.Holders || {};
 
         if (target == null) return source;
 
+        let missingIdentifier = false;
         const result = JSON.parse(JSON.stringify(target));
         const primordial = original ? original : target;
         if (Array.isArray(source) && Array.isArray(target)) {
@@ -422,6 +423,7 @@ ModLoader.Holders = ModLoader.Holders || {};
                 if (!$.Helpers.idPresent(source[i], identifier)) {
                     if (target.length > i) result[i] = $.mergeData(source[i], primordial[i], target[i], identifier, overrides);
                     else result.push(source[i]);
+                    missingIdentifier = true;
                     continue;
                 }
                 const pi = primordial ? primordial.findIndex(x => x && $.Helpers.idEq(x, source[i], identifier)) : -1;
@@ -437,6 +439,9 @@ ModLoader.Holders = ModLoader.Holders || {};
                 }
                 if (ti >= 0) result[ti] = $.mergeData(source[i], primordial[pi], target[ti], identifier, overrides);
                 else result.push(source[i]);
+            }
+            if (missingIdentifier && result.length > source.length) {
+                result.splice(source.length, result.length - source.length);
             }
         } else {
             if ($.Helpers.isEmptyEntry(source)) return result;
@@ -961,7 +966,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         }, 0);
 
         const bitmap = new Bitmap(Graphics.width, Graphics.height)
-        bitmap.drawText("MV Mod Loader v2.7.2", 15, Graphics.height - (itemCount > 0 ? 60 : 30), Graphics.width, 6, "left");
+        bitmap.drawText("MV Mod Loader v2.7.3", 15, Graphics.height - (itemCount > 0 ? 60 : 30), Graphics.width, 6, "left");
 
         if (itemCount > 0) {
             bitmap.textColor = "#ff0000"
