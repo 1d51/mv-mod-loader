@@ -7,7 +7,7 @@ For a modder to add support to a game that does not come with this plugin pre-in
 
 A user can install mods by adding them inside the `www/mods` folder, independently of whether those mods were designed with this plugin in mind or not. For example, if a modder distributes a mod in the form of a folder like `example/www/...`, installing said mod so that it's loaded through the plugin is as simple as drag and dropping the whole thing, so that it looks like `www/mods/example` inside of the game's folder.
 
-The plugin can handle working on top of an already modified game, but a clean install is always recommended. Once the plugin is installed, there should be no need to install mods the usual way, instead of how it's explained here.
+The plugin can handle working on top of an already modified game, but a clean installation is always recommended. Once the plugin is installed, there should be no need to install mods the usual way, instead of how it's explained here.
 
 ## User Instructions
 When the plugin is loaded into a game, a new menu option will be added to the start menu, called **mods**. In said menu, it's possible to enable and disable mods. It's also possible to reorder mods using **Page Up** and **Page Down** (usually a combination of the **FN** key and arrow keys). When the list of active mods or their order changes, the game will shut down and, on next launch, it'll load with said mods.
@@ -59,3 +59,4 @@ Only the `id` and `value` fields are actually used.
 - Mod loading is a bit slow. The first launch after changing the mod list can take up to a minute.
 - The plugin doesn't know how to solve ID conflicts. Mod authors have to agree on the ID their mods use.
 - The plugin relies on empty names to tell if an entry is empty itself or not. To have an entry without a name not be ignored, you have to add some spaces into the otherwise empty name. This is a small quirk that was introduced in favor of more complex, bug-prone solutions to the issue of ignoring empty entries.
+- The plugin will only work on an already deployed game. It will fail to find mods in development mode.
