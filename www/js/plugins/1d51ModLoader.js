@@ -383,7 +383,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         });
 
         $.setLast(mods);
-        $.setConflicts($.Params.conflicts)
+        $.setConflicts($.Params.conflicts);
     };
 
     $.backup = function (path) {
