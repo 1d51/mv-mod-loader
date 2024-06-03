@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.7.3
+ * @version 2.7.4
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -948,10 +948,11 @@ ModLoader.Holders = ModLoader.Holders || {};
         $.configGame();
     };
 
-    $.Holders.onLoadSuccess = Scene_Load.prototype.onLoadSuccess;
-    Scene_Load.prototype.onLoadSuccess = function () {
-        $.Holders.onLoadSuccess.call(this);
-        $.configGame();
+    $.Holders.loadGame = DataManager.loadGame;
+    DataManager.loadGame = function(savefileId) {
+        const result = $.Holders.loadGame.call(this, savefileId);
+        if (result) $.configGame();
+        return result;
     };
 
     $.Holders.create = Scene_Title.prototype.create;
