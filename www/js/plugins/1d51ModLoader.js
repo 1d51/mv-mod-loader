@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.7.4
+ * @version 2.7.5
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -29,6 +29,7 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Config.usePlaceholders = false;
     $.Config.mergeIcons = false;
     $.Config.minRandomId = 999999;
+	$.Config.maxFolderDepth = 1;
 
     $.Helpers.strEq = function (left, right) {
         return JSON.stringify(left) === JSON.stringify(right);
@@ -114,6 +115,21 @@ ModLoader.Holders = ModLoader.Holders || {};
         }
         return files;
     };
+
+	$.Helpers.findFolderRecursively = function (path, name, depth = 0) {
+		const foldersInPath = $.Helpers.getFolders(path);
+		for (const folder of foldersInPath) {
+			const absolute = path + "/" + folder;
+			if (folder === name) {
+				return absolute;
+			} else {
+				if (depth >= $.Config.maxFolderDepth) return null;
+				const result = $.Helpers.findFolderRecursively(absolute, name, depth + 1);
+				if (result) return result;
+			}
+		}
+		return null;
+	};
 
     $.Helpers.getFolders = function (path) {
         const folders = [];
@@ -294,8 +310,11 @@ ModLoader.Holders = ModLoader.Holders || {};
         const filePaths = {};
         additions = new Set();
         for (let i = 0; i < mods.length; i++) {
-            const modPath = $.Params.modsPath + mods[i] + "/www";
-            if (!$.fs.existsSync(modPath)) continue;
+			let modPath = $.Params.modsPath + mods[i];
+			if ($.fs.existsSync(modPath + "/www")) modPath = modPath + "/www";
+			else modPath = $.Helpers.findFolderRecursively(modPath, "www");
+            if (modPath == null) continue;
+
             const files = $.Helpers.getFilesRecursively(modPath);
             for (let j = 0; j < files.length; j++) {
                 const keyPath = $.Helpers.appendix(files[j]);
@@ -813,7 +832,14 @@ ModLoader.Holders = ModLoader.Holders || {};
     };
 
     $.loadMetadata = function (mod) {
-        const metadataPath = $.Params.modsPath + mod + "/metadata.json";
+		let modPath = $.Params.modsPath + mod;
+		if ($.fs.existsSync(modPath + "/www")) modPath = modPath + "/www";
+		else modPath = $.Helpers.findFolderRecursively(modPath, "www");
+
+		const metadataPath = modPath != null
+            ? modPath.substring(0, modPath.length - 4) + "/metadata.json"
+            : $.Params.modsPath + mod + "/metadata.json";
+
         if ($.fs.existsSync(metadataPath)) {
             const metadataFile = $.fs.readFileSync(metadataPath);
             let metadata = JSON.parse(metadataFile);
@@ -886,13 +912,27 @@ ModLoader.Holders = ModLoader.Holders || {};
     };
 
     $.loadConfig = function (mod) {
-        const configPath = $.Params.modsPath + mod + "/config.json";
+		let modPath = $.Params.modsPath + mod;
+		if ($.fs.existsSync(modPath + "/www")) modPath = modPath + "/www";
+		else modPath = $.Helpers.findFolderRecursively(modPath, "www");
+
+        const configPath = modPath != null
+            ? modPath.substring(0, modPath.length - 4) + "/config.json"
+            : $.Params.modsPath + mod + "/config.json";
+
         if ($.fs.existsSync(configPath)) {
             const configFile = $.fs.readFileSync(configPath);
-            return JSON.parse(configFile);
+            let config = JSON.parse(configFile);
+
+            if (config.switches == null)
+                config.switches = [];
+            if (config.variables == null)
+                config.variables = [];
+            return config;
         } else {
             return {
-                "switches": [], "variables": []
+                "switches": [],
+				"variables": []
             };
         }
     };
@@ -923,9 +963,9 @@ ModLoader.Holders = ModLoader.Holders || {};
         const mods = $.sortMods(modFolders);
 
         for (let i = 0; i < mods.length; i++) {
-            const modPath = $.Params.modsPath + mods[i] + "/www";
-            if (!$.fs.existsSync(modPath)) {
-                $.Params.badFolder = true;
+            const modPath = $.Params.modsPath + mods[i];
+			if ($.Helpers.findFolderRecursively(modPath, "www") == null) {
+				$.Params.badFolder = true;
                 return;
             }
         }
@@ -967,7 +1007,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         }, 0);
 
         const bitmap = new Bitmap(Graphics.width, Graphics.height)
-        bitmap.drawText("MV Mod Loader v2.7.4", 15, Graphics.height - (itemCount > 0 ? 60 : 30), Graphics.width, 6, "left");
+        bitmap.drawText("MV Mod Loader v2.7.5", 15, Graphics.height - (itemCount > 0 ? 60 : 30), Graphics.width, 6, "left");
 
         if (itemCount > 0) {
             bitmap.textColor = "#ff0000"
