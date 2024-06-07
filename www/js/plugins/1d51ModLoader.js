@@ -26,8 +26,8 @@ ModLoader.Holders = ModLoader.Holders || {};
     $.Config.keyXDiff = ["list", "note", "equips", "traits", "learnings", "effects"];
 
     $.Config.backupSkip = [];
-    $.Config.usePlaceholders = false;
-    $.Config.mergeIcons = false;
+    $.Config.usePlaceholders = true;
+    $.Config.mergeIcons = true;
     $.Config.minRandomId = 999999;
 	$.Config.maxFolderDepth = 1;
 
