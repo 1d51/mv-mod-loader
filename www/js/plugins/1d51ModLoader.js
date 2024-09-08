@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.7.5
+ * @version 2.7.6
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -227,7 +227,7 @@ ModLoader.Holders = ModLoader.Holders || {};
             return !entry.name;
         return false;
     };
-    
+
     $.Helpers.overlayImages = async function (paths) {
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
@@ -238,21 +238,25 @@ ModLoader.Holders = ModLoader.Holders || {};
 
             const img = await new Promise((resolve, reject) => {
                 const img = new Image();
-                img.onload = () => resolve(img)
-                img.onerror = reject
-                img.src = url
-            })
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = url;
+            });
 
             if (img != null) {
-                if (img.width > canvas.width)
-                    canvas.width = img.width;
-                if (img.height > canvas.height)
-                    canvas.height = img.height;
-                context.drawImage(img, 0, 0);
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = Math.max(canvas.width, img.width);
+                tempCanvas.height = Math.max(canvas.height, img.height);
+                const tempContext = tempCanvas.getContext('2d');
+                tempContext.drawImage(canvas, 0, 0);
+                tempContext.drawImage(img, 0, 0);
+                canvas.width = tempCanvas.width;
+                canvas.height = tempCanvas.height;
+                context.drawImage(tempCanvas, 0, 0);
             }
         }
 
-        const urlData = canvas.toDataURL("png", 1);
+        const urlData = canvas.toDataURL("image/png", 1);
         return urlData.replace(/^data:image\/png;base64,/, "");
     }
 
@@ -1007,7 +1011,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         }, 0);
 
         const bitmap = new Bitmap(Graphics.width, Graphics.height)
-        bitmap.drawText("MV Mod Loader v2.7.5", 15, Graphics.height - (itemCount > 0 ? 60 : 30), Graphics.width, 6, "left");
+        bitmap.drawText("MV Mod Loader v2.7.6", 15, Graphics.height - (itemCount > 0 ? 60 : 30), Graphics.width, 6, "left");
 
         if (itemCount > 0) {
             bitmap.textColor = "#ff0000"
