@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.7.6
+ * @version 2.7.7
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -386,6 +386,32 @@ ModLoader.Holders = ModLoader.Holders || {};
                 const overrides = (metadata["overrides"] || {})[key];
                 const randomizedData = $.randomizeData(reducedData, backupData, metadata, mappings, key, identifier);
                 targetData = $.mergeData(randomizedData, backupData, targetData, identifier, overrides);
+
+                const patches = $.listPatches(mod);
+                for (let j = 0; j < patches.length; j++) {
+                    const patchPath = patches[j] + "/www/" + key;
+                    if ($.fs.existsSync(patchPath)) {
+                        const metadataPath = patches[j] + "/metadata.json";
+                        const metadata = $.parseMetadata(mod, metadataPath);
+
+                        const sourceFile = $.fs.readFileSync(patchPath);
+                        const sourceData = $.Helpers.parse(sourceFile, isPlugin);
+
+                        const reducedData = $.reduceData(sourceData, backupData, identifier, isPlugin);
+
+                        if (!$.Helpers.strEq(sourceData, reducedData)) {
+                            let reducedStr = JSON.stringify(reducedData);
+                            if (isPlugin) reducedStr = "var $plugins =\n" + reducedStr;
+                            $.Helpers.deepWriteSync(patchPath, reducedStr);
+                        }
+
+                        if (reducedData == null) continue;
+
+                        const overrides = (metadata["overrides"] || {})[key];
+                        const randomizedData = $.randomizeData(reducedData, backupData, metadata, mappings, key, identifier);
+                        targetData = $.mergeData(randomizedData, backupData, targetData, identifier, overrides);
+                    }
+                }
             }
 
             if (isPlugin) {
@@ -835,6 +861,38 @@ ModLoader.Holders = ModLoader.Holders || {};
         $.writeLog(log);
     };
 
+    $.listPatches = function (mod) {
+        let patchesPath = $.Params.modsPath + mod;
+        if ($.fs.existsSync(patchesPath + "/patches")) patchesPath = patchesPath + "/patches";
+        else patchesPath = $.Helpers.findFolderRecursively(patchesPath, "patches");
+        if (patchesPath == null) return [];
+
+        const result = [];
+        const patchFolders = $.Helpers.getFolders(patchesPath);
+        for (let i = 0; i < patchFolders.length; i++) {
+            const metadataPath = patchFolders[i] + "/metadata.json";
+            const metadata = $.parseMetadata(mod, metadataPath);
+            const dependencies = metadata["dependencies"];
+
+            let valid = true;
+            for (let j = 0; j < dependencies.length; j++) {
+                const version = Mods[dependencies[j]["name"]];
+                const present = version && !dependencies[j]["version"];
+                const versioned = version === dependencies[j]["version"];
+                if (!present && !versioned) {
+                    valid = false;
+                    break;
+                }
+            }
+
+            if (valid) {
+                result.push(patchesPath + "/" + patchFolders[i]);
+            }
+        }
+
+        return result;
+    };
+
     $.loadMetadata = function (mod) {
         let modPath = $.Params.modsPath + mod;
         if ($.fs.existsSync(modPath + "/www")) modPath = modPath + "/www";
@@ -844,9 +902,13 @@ ModLoader.Holders = ModLoader.Holders || {};
             ? modPath.substring(0, modPath.length - 4) + "/metadata.json"
             : $.Params.modsPath + mod + "/metadata.json";
 
-        if ($.fs.existsSync(metadataPath)) {
-            const metadataFile = $.fs.readFileSync(metadataPath);
-            let metadata = JSON.parse(metadataFile);
+        return $.parseMetadata(mod, metadataPath);
+    };
+
+    $.parseMetadata = function (mod, path) {
+        if ($.fs.existsSync(path)) {
+            const file = $.fs.readFileSync(path);
+            let metadata = JSON.parse(file);
 
             if (metadata.name == null)
                 metadata.name = mod;
@@ -1011,7 +1073,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         }, 0);
 
         const bitmap = new Bitmap(Graphics.width, Graphics.height)
-        bitmap.drawText("MV Mod Loader v2.7.6", 15, Graphics.height - (itemCount > 0 ? 60 : 30), Graphics.width, 6, "left");
+        bitmap.drawText("MV Mod Loader v2.7.7", 15, Graphics.height - (itemCount > 0 ? 60 : 30), Graphics.width, 6, "left");
 
         if (itemCount > 0) {
             bitmap.textColor = "#ff0000"
