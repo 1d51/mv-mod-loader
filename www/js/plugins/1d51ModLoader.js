@@ -1,6 +1,6 @@
 /*:
  * @author 1d51
- * @version 2.7.7
+ * @version 2.7.8
  * @plugindesc A simple mod loader for RPG Maker MV.
  */
 
@@ -415,14 +415,21 @@ ModLoader.Holders = ModLoader.Holders || {};
             }
 
             if (isPlugin) {
+                const sortedData = [];
+                for (let i = 0; i < targetData.length; i++) {
+                    const plugin = targetData[i];
+                    if (plugin["position"] == null) {
+                        sortedData.push(plugin);
+                    }
+                }
                 for (let i = 0; i < targetData.length; i++) {
                     const plugin = targetData[i];
                     if (plugin["position"] != null) {
-                        const removed = targetData.splice(i, 1)[0];
-                        targetData.splice(plugin["position"], 0, removed);
-                        delete plugin["position"];
+                        const position = Math.min(plugin["position"], sortedData.length - 1);
+                        sortedData.splice(position, 0, plugin);
                     }
                 }
+                targetData = sortedData;
             }
 
             const path = $.Params.root + key;
@@ -870,7 +877,7 @@ ModLoader.Holders = ModLoader.Holders || {};
         const result = [];
         const patchFolders = $.Helpers.getFolders(patchesPath);
         for (let i = 0; i < patchFolders.length; i++) {
-            const metadataPath = patchFolders[i] + "/metadata.json";
+            const metadataPath = patchesPath + "/" + patchFolders[i] + "/metadata.json";
             const metadata = $.parseMetadata(mod, metadataPath);
             const dependencies = metadata["dependencies"];
 
@@ -878,7 +885,7 @@ ModLoader.Holders = ModLoader.Holders || {};
             for (let j = 0; j < dependencies.length; j++) {
                 const version = Mods[dependencies[j]["name"]];
                 const present = version && !dependencies[j]["version"];
-                const versioned = version === dependencies[j]["version"];
+                const versioned = version && version === dependencies[j]["version"];
                 if (!present && !versioned) {
                     valid = false;
                     break;
