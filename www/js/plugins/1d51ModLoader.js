@@ -880,6 +880,7 @@ ModLoader.Holders = ModLoader.Holders || {};
             const metadataPath = patchesPath + "/" + patchFolders[i] + "/metadata.json";
             const metadata = $.parseMetadata(mod, metadataPath);
             const dependencies = metadata["dependencies"];
+            const incompatible = metadata["incompatible"];
 
             let valid = true;
             for (let j = 0; j < dependencies.length; j++) {
@@ -887,6 +888,15 @@ ModLoader.Holders = ModLoader.Holders || {};
                 const present = version && !dependencies[j]["version"];
                 const versioned = version && version === dependencies[j]["version"];
                 if (!present && !versioned) {
+                    valid = false;
+                    break;
+                }
+            }
+            for (let j = 0; j < incompatible.length; j++) {
+                const version = Mods[incompatible[j]["name"]];
+                const present = version && !incompatible[j]["version"];
+                const versioned = version && version === incompatible[j]["version"];
+                if (present || versioned) {
                     valid = false;
                     break;
                 }
