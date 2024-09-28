@@ -907,7 +907,6 @@ ModLoader.Holders = ModLoader.Holders || {};
             }
         }
 
-        console.log(result);
         return result;
     };
 
